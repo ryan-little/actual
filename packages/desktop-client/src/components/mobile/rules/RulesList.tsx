@@ -57,7 +57,7 @@ export function RulesList({
           style={{
             paddingBottom: MOBILE_NAV_HEIGHT,
           }}
-          renderEmptyState={() =>
+          renderEmptyState={() => (
             <View
               style={{
                 flex: 1,
@@ -78,7 +78,7 @@ export function RulesList({
                 </Trans>
               </Text>
             </View>
-          }
+          )}
         >
           {rule => (
             <RulesListItem

@@ -76,7 +76,7 @@ export function SchedulesList({
           style={{
             paddingBottom: MOBILE_NAV_HEIGHT,
           }}
-          renderEmptyState={() =>
+          renderEmptyState={() => (
             <View
               style={{
                 flex: 1,
@@ -93,12 +93,11 @@ export function SchedulesList({
                 }}
               >
                 <Trans>
-                  No schedules found. Create your first schedule to get
-                  started!
+                  No schedules found. Create your first schedule to get started!
                 </Trans>
               </Text>
             </View>
-          }
+          )}
         >
           {item =>
             !('completed' in item) ? (

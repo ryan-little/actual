@@ -61,7 +61,7 @@ export function PayeesList({
             overflow: 'auto',
           }}
           dependencies={[ruleCounts, isRuleCountsLoading]}
-          renderEmptyState={() =>
+          renderEmptyState={() => (
             <View
               style={{
                 flex: 1,
@@ -80,7 +80,7 @@ export function PayeesList({
                 <Trans>No payees found.</Trans>
               </Text>
             </View>
-          }
+          )}
         >
           {payee => (
             <PayeesListItem
