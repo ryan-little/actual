@@ -1,19 +1,22 @@
 import type { Locator, Page } from '@playwright/test';
 
+const NO_SCHEDULES_FOUND_TEXT =
+  'No schedules found. Create your first schedule to get started!';
+
 export class MobileSchedulesPage {
   readonly page: Page;
   readonly searchBox: Locator;
   readonly addButton: Locator;
   readonly schedulesList: Locator;
-  readonly emptyMessage: Locator;
+  readonly noSchedulesFoundText: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.searchBox = page.getByPlaceholder('Filter schedules…');
     this.addButton = page.getByRole('button', { name: 'Add new schedule' });
     this.schedulesList = page.getByRole('grid', { name: 'Schedules' });
-    this.emptyMessage = page.getByText(
-      'No schedules found. Create your first schedule to get started!',
+    this.noSchedulesFoundText = this.schedulesList.getByText(
+      NO_SCHEDULES_FOUND_TEXT,
     );
   }
 
@@ -49,7 +52,11 @@ export class MobileSchedulesPage {
    * Get all visible schedule items
    */
   getAllSchedules() {
-    return this.schedulesList.getByRole('gridcell');
+    // `GridList.renderEmptyState` still renders a row with "No schedules found" text
+    // when no schedules are present, so we need to filter that out to get the actual schedule items.
+    return this.schedulesList
+      .getByRole('row')
+      .filter({ hasNotText: NO_SCHEDULES_FOUND_TEXT });
   }
 
   /**

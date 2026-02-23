@@ -85,8 +85,7 @@ test.describe('Mobile Payees', () => {
     await page.waitForTimeout(500);
 
     // Check that empty message is shown
-    const emptyMessage = page.getByText('No payees found.');
-    await expect(emptyMessage).toBeVisible();
+    await expect(payeesPage.noPayeesFoundText).toBeVisible();
 
     // Check that no payee items are visible
     const payees = payeesPage.getAllPayees();

@@ -1,16 +1,18 @@
 import type { Locator, Page } from '@playwright/test';
 
+const NO_PAYEES_FOUND_TEXT = 'No payees found.';
+
 export class MobilePayeesPage {
   readonly page: Page;
   readonly searchBox: Locator;
   readonly payeesList: Locator;
-  readonly emptyMessage: Locator;
+  readonly noPayeesFoundText: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.searchBox = page.getByPlaceholder('Filter payees…');
     this.payeesList = page.getByRole('grid', { name: 'Payees' });
-    this.emptyMessage = page.getByText('No payees found.');
+    this.noPayeesFoundText = this.payeesList.getByText(NO_PAYEES_FOUND_TEXT);
   }
 
   async waitFor(options?: {
@@ -45,7 +47,11 @@ export class MobilePayeesPage {
    * Get all visible payee items
    */
   getAllPayees() {
-    return this.payeesList.getByRole('gridcell');
+    // `GridList.renderEmptyState` still renders a row with "No payees found" text
+    // when no payees are present, so we need to filter that out to get the actual payee items.
+    return this.payeesList
+      .getByRole('row')
+      .filter({ hasNotText: NO_PAYEES_FOUND_TEXT });
   }
 
   /**

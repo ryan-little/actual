@@ -59,8 +59,11 @@ test.describe('Mobile Schedules', () => {
     await page.waitForTimeout(500);
 
     // Check that empty message is shown
-    await expect(schedulesPage.emptyMessage).toBeVisible();
+    await expect(schedulesPage.noSchedulesFoundText).toBeVisible();
 
+    // Check that no schedule items are visible
+    const schedules = schedulesPage.getAllSchedules();
+    await expect(schedules).toHaveCount(0);
     await expect(page).toMatchThemeScreenshots();
   });
 
