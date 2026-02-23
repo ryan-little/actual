@@ -62,11 +62,11 @@ export function CreateEncryptionKeyModal({
         return;
       }
 
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: prefQueries.listGlobal().queryKey,
       });
-      dispatch(loadAllFiles());
-      dispatch(sync());
+      void dispatch(loadAllFiles());
+      void dispatch(sync());
 
       setLoading(false);
       close();
@@ -178,7 +178,7 @@ export function CreateEncryptionKeyModal({
           <Form
             onSubmit={e => {
               e.preventDefault();
-              onCreateKey(close);
+              void onCreateKey(close);
             }}
           >
             <View style={{ alignItems: 'center' }}>

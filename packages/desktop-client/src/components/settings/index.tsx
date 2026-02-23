@@ -49,7 +49,7 @@ function About() {
   const versionInfo = useSelector(state => state.app.versionInfo);
   const [notifyWhenUpdateIsAvailable, setNotifyWhenUpdateIsAvailablePref] =
     useGlobalPref('notifyWhenUpdateIsAvailable', () => {
-      dispatch(getLatestAppVersion());
+      void dispatch(getLatestAppVersion());
     });
   const dispatch = useDispatch();
 
@@ -178,7 +178,7 @@ export function Settings() {
   const [_, setDefaultCurrencyCodePref] = useSyncedPref('defaultCurrencyCode');
 
   const onCloseBudget = () => {
-    dispatch(closeBudget());
+    void dispatch(closeBudget());
   };
 
   const onSetDefaultCurrencyCodePref = useEffectEvent(

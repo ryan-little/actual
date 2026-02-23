@@ -53,7 +53,7 @@ function NarrowNotSupported({
   const navigate = useNavigate();
   useEffect(() => {
     if (isNarrowWidth) {
-      navigate(redirectTo);
+      void navigate(redirectTo);
     }
   }, [isNarrowWidth, navigate, redirectTo]);
   return isNarrowWidth ? null : children;
@@ -70,7 +70,7 @@ function WideNotSupported({
   const navigate = useNavigate();
   useEffect(() => {
     if (!isNarrowWidth) {
-      navigate(redirectTo);
+      void navigate(redirectTo);
     }
   }, [isNarrowWidth, navigate, redirectTo]);
   return isNarrowWidth ? children : null;
@@ -135,13 +135,13 @@ export function FinancesApp() {
       );
     }
 
-    run();
+    void run();
   });
 
   useEffect(() => init(), []);
 
   useEffect(() => {
-    dispatch(getLatestAppVersion());
+    void dispatch(getLatestAppVersion());
   }, [dispatch]);
 
   useEffect(() => {
