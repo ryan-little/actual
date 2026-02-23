@@ -24,7 +24,6 @@ import { Permissions } from '@desktop-client/auth/types';
 import { closeBudget } from '@desktop-client/budgetfiles/budgetfilesSlice';
 import { useMetadataPref } from '@desktop-client/hooks/useMetadataPref';
 import { useNavigate } from '@desktop-client/hooks/useNavigate';
-import { prefQueries } from '@desktop-client/prefs';
 import { useDispatch, useSelector } from '@desktop-client/redux';
 import { getUserData, signOut } from '@desktop-client/users/usersSlice';
 
@@ -57,8 +56,6 @@ export function LoggedInUser({
     f => f.state === 'remote' || f.state === 'synced' || f.state === 'detached',
   ) as (SyncedLocalFile | RemoteFile)[];
   const currentFile = remoteFiles.find(f => f.cloudFileId === cloudFileId);
-  const syncedPrefsQuery = useQuery(prefQueries.listSynced());
-  const hasSyncedPrefs = syncedPrefsQuery.isSuccess && !!syncedPrefsQuery.data;
 
   const initializeUserData = useCallback(async () => {
     try {
@@ -238,7 +235,7 @@ export function LoggedInUser({
         multiuserEnabled &&
         userData &&
         userData?.displayName &&
-        !hasSyncedPrefs && (
+        !budgetId && (
           <small>
             (
             <Trans>
@@ -254,7 +251,7 @@ export function LoggedInUser({
         multiuserEnabled &&
         userData &&
         userData?.displayName &&
-        hasSyncedPrefs && (
+        budgetId && (
           <small>
             (
             <Trans>
