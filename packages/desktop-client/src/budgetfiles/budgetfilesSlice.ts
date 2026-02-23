@@ -1,5 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
+import { type QueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
 
 import { send } from 'loot-core/platform/client/connection';
@@ -98,16 +99,34 @@ export const loadBudget = createAppAsyncThunk(
   },
 );
 
+function invalidateClosedBudgetQueries(queryClient: QueryClient) {
+  // Invalidate all queries but do not cause a refetch.
+  // This is because we want to clear out all the budget data from the queries,
+  // but we don't want to trigger a bunch of error states from the queries trying
+  // to fetch data for a budget that is now closed. The next time a budget is loaded,
+  // the queries will refetch with the correct budget id.
+  queryClient.invalidateQueries({
+    refetchType: 'none',
+  });
+
+  // Invalidate the metadata query since the budget is now closed.
+  // We want to cause a refetch so that the app can update to show the correct state
+  // (e.g. show the manager page if no budget is open).
+  queryClient.invalidateQueries({
+    queryKey: prefQueries.listMetadata().queryKey,
+  });
+}
+
 export const closeBudget = createAppAsyncThunk(
   `${sliceName}/closeBudget`,
   async (_, { dispatch, extra: { queryClient } }) => {
     const prefs = await queryClient.ensureQueryData(prefQueries.listMetadata());
     if (prefs && prefs.id) {
       dispatch(resetApp());
-      queryClient.clear();
       dispatch(setAppState({ loadingText: t('Closing...') }));
       await send('close-budget');
       dispatch(setAppState({ loadingText: null }));
+      invalidateClosedBudgetQueries(queryClient);
       if (localStorage.getItem('SharedArrayBufferOverride')) {
         window.location.reload();
       }
@@ -121,7 +140,7 @@ export const closeBudgetUI = createAppAsyncThunk(
     const prefs = await queryClient.ensureQueryData(prefQueries.listMetadata());
     if (prefs && prefs.id) {
       dispatch(resetApp());
-      queryClient.clear();
+      invalidateClosedBudgetQueries(queryClient);
     }
   },
 );

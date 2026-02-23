@@ -92,9 +92,7 @@ function AppInner() {
           loadingText: t('Loading global preferences...'),
         }),
       );
-      void queryClient.invalidateQueries({
-        queryKey: prefQueries.listGlobal().queryKey,
-      });
+      void queryClient.prefetchQuery(prefQueries.listGlobal());
 
       // Open the last opened budget, if any
       dispatch(

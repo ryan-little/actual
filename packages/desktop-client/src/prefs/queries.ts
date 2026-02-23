@@ -12,7 +12,7 @@ import type {
 import { setI18NextLanguage } from '@desktop-client/i18n';
 
 export type AllPrefs = {
-  local: MetadataPrefs;
+  metadata: MetadataPrefs;
   global: GlobalPrefs;
   synced: SyncedPrefs;
   server: ServerPrefs;
@@ -25,7 +25,7 @@ export const prefQueries = {
     queryOptions<AllPrefs>({
       queryKey: [...prefQueries.lists(), 'all'],
       queryFn: async ({ client }) => {
-        const [localPrefs, globalPrefs, syncedPrefs] = await Promise.all([
+        const [metadataPrefs, globalPrefs, syncedPrefs] = await Promise.all([
           client.ensureQueryData(prefQueries.listMetadata()),
           client.ensureQueryData(prefQueries.listGlobal()),
           client.ensureQueryData(prefQueries.listSynced()),
@@ -43,14 +43,14 @@ export const prefQueries = {
         setI18NextLanguage(globalPrefs.language ?? '');
 
         return {
-          local: localPrefs,
+          metadata: metadataPrefs,
           global: globalPrefs,
           synced: syncedPrefs,
           server: {}, // Server prefs are loaded separately
         };
       },
       placeholderData: {
-        local: {},
+        metadata: {},
         global: {},
         synced: {},
         server: {},
@@ -81,7 +81,15 @@ export const prefQueries = {
   listSynced: () =>
     queryOptions<SyncedPrefs>({
       queryKey: [...prefQueries.lists(), 'synced'],
-      queryFn: async () => {
+      queryFn: async ({ client }) => {
+        const metadataPrefs = await client.getQueryData(
+          prefQueries.listMetadata().queryKey,
+        );
+        // Synced prefs are budget-specific, so if we don't have
+        // a budget loaded, just return an empty object.
+        if (!metadataPrefs?.id) {
+          return {};
+        }
         return await send('preferences/get');
       },
       placeholderData: {},

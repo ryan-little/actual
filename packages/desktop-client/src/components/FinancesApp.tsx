@@ -192,9 +192,6 @@ export function FinancesApp() {
 
   const scrollableRef = useRef<HTMLDivElement>(null);
 
-  // Prefetch preferences
-  usePrefetchQuery(prefQueries.list());
-
   return (
     <View style={{ height: '100%' }}>
       <RouterBehaviors />
