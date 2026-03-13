@@ -86,6 +86,7 @@ export function CreateAccountModal({
     try {
       const results = await send('simplefin-accounts');
       if (results.error_code === 'INVALID_ACCESS_TOKEN') {
+        setLoadingSimpleFinAccounts(false);
         dispatch(
           pushModal({
             modal: {
