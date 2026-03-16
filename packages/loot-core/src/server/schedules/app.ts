@@ -2,8 +2,6 @@
 import * as d from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
-import type { WithRequired } from 'loot-core/types/util';
-
 import { captureBreadcrumb } from '../../platform/exceptions';
 import * as connection from '../../platform/server/connection';
 import { logger } from '../../platform/server/log';
@@ -19,6 +17,7 @@ import {
   recurConfigToRSchedule,
 } from '../../shared/schedules';
 import type { RuleConditionEntity, ScheduleEntity } from '../../types/models';
+import type { WithRequired } from '../../types/util';
 import { addTransactions } from '../accounts/sync';
 import { createApp } from '../app';
 import { aqlQuery } from '../aql';
