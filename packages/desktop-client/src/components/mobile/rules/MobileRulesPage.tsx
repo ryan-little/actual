@@ -120,8 +120,6 @@ export function MobileRulesPage() {
             showUndoNotification({
               message: t('Rule deleted successfully'),
             });
-            // Refresh the rules list
-            void refetchRules();
           },
         },
       );

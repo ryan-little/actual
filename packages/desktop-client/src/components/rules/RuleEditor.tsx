@@ -1260,11 +1260,8 @@ export function RuleEditor({
         rule,
       },
       {
-        onSuccess: ({ id }) => {
-          originalOnSave?.({
-            id,
-            ...rule,
-          });
+        onSuccess: savedRule => {
+          originalOnSave?.(savedRule);
         },
         onError: error => {
           if ('conditionErrors' in error && error.conditionErrors) {
