@@ -124,7 +124,7 @@ export function MobileRulesPage() {
         },
       );
     },
-    [deleteRule, showUndoNotification, t, refetchRules],
+    [deleteRule, showUndoNotification, t],
   );
 
   return (
