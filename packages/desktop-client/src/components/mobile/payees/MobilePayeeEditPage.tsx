@@ -8,7 +8,7 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { send } from 'loot-core/platform/client/connection';
+import { server } from 'loot-core/platform/client/connection';
 import type { PayeeEntity } from 'loot-core/types/models';
 
 import { MobileBackButton } from '@desktop-client/components/mobile/MobileBackButton';
@@ -58,7 +58,7 @@ export function MobilePayeeEditPage() {
     }
 
     try {
-      await send('payees-batch-change', {
+      await server.batchChangePayees({
         updated: [{ id: payee.id, name: editedPayeeName.trim() }],
       });
       showUndoNotification({

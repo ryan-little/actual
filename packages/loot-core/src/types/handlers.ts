@@ -7,7 +7,7 @@ import type { DashboardHandlers } from '../server/dashboard/app';
 import type { EncryptionHandlers } from '../server/encryption/app';
 import type { FiltersHandlers } from '../server/filters/app';
 import type { NotesHandlers } from '../server/notes/app';
-import type { PayeesHandlers } from '../server/payees/app';
+import type { PayeeHandlers } from '../server/payees/app';
 import type { PreferencesHandlers } from '../server/preferences/app';
 import type { ReportsHandlers } from '../server/reports/app';
 import type { RulesHandlers } from '../server/rules/app';
@@ -35,7 +35,7 @@ export type Handlers = {} & ServerHandlers &
   AdminHandlers &
   ToolsHandlers &
   AccountHandlers &
-  PayeesHandlers &
+  PayeeHandlers &
   SpreadsheetHandlers &
   SyncHandlers &
   BudgetFileHandlers &

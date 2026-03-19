@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 
-import { listen, send } from 'loot-core/platform/client/connection';
+import { listen, server } from 'loot-core/platform/client/connection';
 import * as undo from 'loot-core/platform/client/undo';
 import type { UndoState } from 'loot-core/server/undo';
 import { applyChanges } from 'loot-core/shared/util';
@@ -112,14 +112,14 @@ export function ManagePayeesWithData({
       orphanedPayees={orphanedPayees}
       initialSelectedIds={initialSelectedIds}
       onBatchChange={async (changes: Diff<PayeeEntity>) => {
-        await send('payees-batch-change', changes);
+        await server.batchChangePayees(changes);
         queryClient.setQueryData(
           payeeQueries.listOrphaned().queryKey,
           existing => applyChanges(changes, existing ?? []),
         );
       }}
       onMerge={async ([targetId, ...mergeIds]) => {
-        await send('payees-merge', { targetId, mergeIds });
+        await server.mergePayees({ targetId, mergeIds });
 
         const targetIdIsOrphan = orphanedPayees
           .map(o => o.id)

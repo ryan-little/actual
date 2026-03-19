@@ -14,44 +14,42 @@ import { batchMessages } from '../sync';
 import * as rules from '../transactions/transaction-rules';
 import { undoable } from '../undo';
 
-export type PayeesHandlers = {
-  'payee-create': typeof createPayee;
-  'common-payees-get': typeof getCommonPayees;
-  'payees-get': typeof getPayees;
-  'payees-get-orphaned': typeof getOrphanedPayees;
-  'payees-get-rule-counts': typeof getPayeeRuleCounts;
-  'payees-merge': typeof mergePayees;
-  'payees-batch-change': typeof batchChangePayees;
-  'payees-check-orphaned': typeof checkOrphanedPayees;
-  'payees-get-rules': typeof getPayeeRules;
-  'payee-location-create': typeof createPayeeLocation;
-  'payee-locations-get': typeof getPayeeLocations;
-  'payee-location-delete': typeof deletePayeeLocation;
-  'payees-get-nearby': typeof getNearbyPayees;
+export type PayeeHandlers = {
+  createPayee: typeof createPayee;
+  getCommonPayees: typeof getCommonPayees;
+  getPayees: typeof getPayees;
+  getOrphanedPayees: typeof getOrphanedPayees;
+  getPayeeRuleCounts: typeof getPayeeRuleCounts;
+  mergePayees: typeof mergePayees;
+  batchChangePayees: typeof batchChangePayees;
+  checkOrphanedPayees: typeof checkOrphanedPayees;
+  getPayeeRules: typeof getPayeeRules;
+  createPayeeLocation: typeof createPayeeLocation;
+  getPayeeLocations: typeof getPayeeLocations;
+  deletePayeeLocation: typeof deletePayeeLocation;
+  getNearbyPayees: typeof getNearbyPayees;
 };
 
-export const app = createApp<PayeesHandlers>();
-app.method('payee-create', mutator(undoable(createPayee)));
-app.method('common-payees-get', getCommonPayees);
-app.method('payees-get', getPayees);
-app.method('payees-get-orphaned', getOrphanedPayees);
-app.method('payees-get-rule-counts', getPayeeRuleCounts);
-app.method(
-  'payees-merge',
-  mutator(
+export const app = createApp<PayeeHandlers>({
+  createPayee: mutator(undoable(createPayee)),
+  batchChangePayees: mutator(undoable(batchChangePayees)),
+  createPayeeLocation: mutator(createPayeeLocation),
+  deletePayeeLocation: mutator(deletePayeeLocation),
+  mergePayees: mutator(
     undoable(mergePayees, args => ({
       mergeIds: args.mergeIds,
       targetId: args.targetId,
     })),
   ),
-);
-app.method('payees-batch-change', mutator(undoable(batchChangePayees)));
-app.method('payees-check-orphaned', checkOrphanedPayees);
-app.method('payees-get-rules', getPayeeRules);
-app.method('payee-location-create', mutator(createPayeeLocation));
-app.method('payee-locations-get', getPayeeLocations);
-app.method('payee-location-delete', mutator(deletePayeeLocation));
-app.method('payees-get-nearby', getNearbyPayees);
+  getCommonPayees,
+  getPayees,
+  getOrphanedPayees,
+  getPayeeRuleCounts,
+  checkOrphanedPayees,
+  getPayeeRules,
+  getPayeeLocations,
+  getNearbyPayees,
+});
 
 async function createPayee({ name }: { name: PayeeEntity['name'] }) {
   return db.insertPayee({ name });

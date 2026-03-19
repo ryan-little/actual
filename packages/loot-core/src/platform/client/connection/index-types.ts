@@ -1,7 +1,18 @@
 import type { Handlers } from '../../../types/handlers';
 import type { ServerEvents } from '../../../types/server-events';
 
-export declare function init(): Promise<unknown>;
+/**
+ * Loot core server proxy.
+ */
+export type ServerProxy = {
+  [K in keyof Handlers]: (
+    args?: Parameters<Handlers[K]>[0],
+  ) => ReturnType<Handlers[K]>;
+};
+
+export declare const server: ServerProxy;
+
+export declare function init(): Promise<ServerProxy>;
 export type Init = typeof init;
 
 /**

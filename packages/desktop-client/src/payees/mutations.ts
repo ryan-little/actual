@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
-import { send } from 'loot-core/platform/client/connection';
+import { server } from 'loot-core/platform/client/connection';
 import type { PayeeEntity } from 'loot-core/types/models';
 
 import { locationService } from './location';
@@ -99,7 +99,7 @@ export function useCreatePayeeMutation() {
 
   return useMutation({
     mutationFn: async ({ name }: CreatePayeePayload) => {
-      const id: PayeeEntity['id'] = await send('payee-create', {
+      const id: PayeeEntity['id'] = await server.createPayee({
         name: name.trim(),
       });
       return id;

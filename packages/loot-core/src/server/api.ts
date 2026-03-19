@@ -705,31 +705,31 @@ handlers['api/category-delete'] = withMutation(async function ({
 
 handlers['api/common-payees-get'] = async function () {
   checkFileOpen();
-  const payees = await handlers['common-payees-get']();
+  const payees = await handlers['getCommonPayees']();
   return payees.map(payee => payeeModel.toExternal(payee));
 };
 
 handlers['api/payees-get'] = async function () {
   checkFileOpen();
-  const payees = await handlers['payees-get']();
+  const payees = await handlers['getPayees']();
   return payees.map(payee => payeeModel.toExternal(payee));
 };
 
 handlers['api/payee-create'] = withMutation(async function ({ payee }) {
   checkFileOpen();
-  return handlers['payee-create']({ name: payee.name });
+  return handlers['createPayee']({ name: payee.name });
 });
 
 handlers['api/payee-update'] = withMutation(async function ({ id, fields }) {
   checkFileOpen();
-  return handlers['payees-batch-change']({
+  return handlers['batchChangePayees']({
     updated: [{ id, ...payeeModel.fromExternal(fields) }],
   });
 });
 
 handlers['api/payee-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['payees-batch-change']({ deleted: [{ id }] });
+  return handlers['batchChangePayees']({ deleted: [{ id }] });
 });
 
 handlers['api/payees-merge'] = withMutation(async function ({
@@ -737,7 +737,7 @@ handlers['api/payees-merge'] = withMutation(async function ({
   mergeIds,
 }) {
   checkFileOpen();
-  return handlers['payees-merge']({ targetId, mergeIds });
+  return handlers['mergePayees']({ targetId, mergeIds });
 });
 
 handlers['api/tags-get'] = async function () {
@@ -772,17 +772,17 @@ handlers['api/payee-location-create'] = withMutation(async function ({
   longitude,
 }) {
   checkFileOpen();
-  return handlers['payee-location-create']({ payeeId, latitude, longitude });
+  return handlers['createPayeeLocation']({ payeeId, latitude, longitude });
 });
 
 handlers['api/payee-locations-get'] = async function ({ payeeId }) {
   checkFileOpen();
-  return handlers['payee-locations-get']({ payeeId });
+  return handlers['getPayeeLocations']({ payeeId });
 };
 
 handlers['api/payee-location-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['payee-location-delete']({ id });
+  return handlers['deletePayeeLocation']({ id });
 });
 
 handlers['api/payees-get-nearby'] = async function ({
@@ -791,7 +791,7 @@ handlers['api/payees-get-nearby'] = async function ({
   maxDistance,
 }) {
   checkFileOpen();
-  return handlers['payees-get-nearby']({ latitude, longitude, maxDistance });
+  return handlers['getNearbyPayees']({ latitude, longitude, maxDistance });
 };
 
 handlers['api/rules-get'] = async function () {
@@ -801,7 +801,7 @@ handlers['api/rules-get'] = async function () {
 
 handlers['api/payee-rules-get'] = async function ({ id }) {
   checkFileOpen();
-  return handlers['payees-get-rules']({ id });
+  return handlers['getPayeeRules']({ id });
 };
 
 handlers['api/rule-create'] = withMutation(async function ({ rule }) {

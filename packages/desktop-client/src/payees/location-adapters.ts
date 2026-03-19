@@ -1,4 +1,4 @@
-import { send } from 'loot-core/platform/client/connection';
+import { server } from 'loot-core/platform/client/connection';
 import type { LocationCoordinates } from 'loot-core/shared/location-utils';
 import type {
   NearbyPayeeEntity,
@@ -68,7 +68,7 @@ export class SendApiLocationClient implements LocationApiClient {
     payeeId: string,
     coordinates: LocationCoordinates,
   ): Promise<string> {
-    return await send('payee-location-create', {
+    return await server.createPayeeLocation({
       payeeId,
       latitude: coordinates.latitude,
       longitude: coordinates.longitude,
@@ -76,18 +76,18 @@ export class SendApiLocationClient implements LocationApiClient {
   }
 
   async getLocations(payeeId: string): Promise<PayeeLocationEntity[]> {
-    return await send('payee-locations-get', { payeeId });
+    return await server.getPayeeLocations({ payeeId });
   }
 
   async deleteLocation(locationId: string): Promise<void> {
-    await send('payee-location-delete', { id: locationId });
+    await server.deletePayeeLocation({ id: locationId });
   }
 
   async getNearbyPayees(
     coordinates: LocationCoordinates,
     maxDistance: number,
   ): Promise<NearbyPayeeEntity[]> {
-    const result = await send('payees-get-nearby', {
+    const result = await server.getNearbyPayees({
       latitude: coordinates.latitude,
       longitude: coordinates.longitude,
       maxDistance,

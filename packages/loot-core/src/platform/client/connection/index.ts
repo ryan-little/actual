@@ -9,6 +9,31 @@ const replyHandlers = new Map();
 const listeners = new Map();
 let messageQueue = [];
 let socketClient = null;
+let initPromise: Promise<T.ServerProxy> | null = null;
+
+export const server: T.ServerProxy = new Proxy({} as T.ServerProxy, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'symbol') {
+      return undefined;
+    }
+
+    // Returning undefined for 'then' prevents the proxy from being
+    // treated as a thenable when awaited, which would cause Promise
+    // machinery to call server.then(resolve, reject) with native functions.
+    if (prop === 'then') {
+      return undefined;
+    }
+
+    if (!initPromise) {
+      throw new Error(
+        `Cannot use server proxy before init() has been called`,
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (args?: any) => send(prop as any, args);
+  },
+});
 
 function connectSocket(onOpen) {
   global.Actual.ipcConnect(function (client) {
@@ -72,12 +97,15 @@ function connectSocket(onOpen) {
       messageQueue = [];
     }
 
-    onOpen();
+    onOpen(server);
   });
 }
 
-export const init: T.Init = async function () {
-  return new Promise(connectSocket);
+export const init: T.Init = function () {
+  if (!initPromise) {
+    initPromise = new Promise(connectSocket);
+  }
+  return initPromise;
 };
 
 export const send: T.Send = function (

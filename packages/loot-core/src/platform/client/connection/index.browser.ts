@@ -12,6 +12,7 @@ const listeners = new Map();
 let messageQueue = [];
 
 let globalWorker = null;
+let initPromise: Promise<T.ServerProxy> | null = null;
 
 class ReconstructedError extends Error {
   url: string;
@@ -83,6 +84,31 @@ function handleMessage(msg) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const server: T.ServerProxy = new Proxy({} as T.ServerProxy, {
+  get(_target, prop: string | symbol) {
+    if (typeof prop === 'symbol') {
+      return undefined;
+    }
+
+    // Returning undefined for 'then' prevents the proxy from being
+    // treated as a thenable when awaited, which would cause Promise
+    // machinery to call server.then(resolve, reject) with native functions.
+    if (prop === 'then') {
+      return undefined;
+    }
+
+    if (!initPromise) {
+      throw new Error(
+        `Cannot use server proxy before init() has been called`,
+      );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (args?: any) => send(prop as any, args);
+  },
+});
+
 // Note that this does not support retry. If the worker
 // dies, it will permanently be disconnected. That should be OK since
 // I don't think a worker should ever die due to a system error.
@@ -107,7 +133,7 @@ function connectWorker(worker, onOpen, onError) {
       globalWorker.postMessage({
         name: 'client-connected-to-backend',
       });
-      onOpen();
+      onOpen(server);
     } else if (msg.type === 'app-init-failure') {
       globalWorker.postMessage({
         name: '__app-init-failure-acknowledged',
@@ -149,11 +175,16 @@ function connectWorker(worker, onOpen, onError) {
   }
 }
 
-export const init: T.Init = async function () {
-  const worker = await global.Actual.getServerSocket();
-  return new Promise((resolve, reject) =>
-    connectWorker(worker, resolve, reject),
-  );
+export const init: T.Init = function () {
+  if (!initPromise) {
+    initPromise = global.Actual.getServerSocket().then(
+      worker =>
+        new Promise((resolve, reject) =>
+          connectWorker(worker, resolve, reject),
+        ),
+    );
+  }
+  return initPromise;
 };
 
 export const send: T.Send = function (

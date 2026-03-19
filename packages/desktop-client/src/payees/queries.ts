@@ -2,7 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import { t } from 'i18next';
 import memoizeOne from 'memoize-one';
 
-import { send } from 'loot-core/platform/client/connection';
+import { server } from 'loot-core/platform/client/connection';
 import { groupById } from 'loot-core/shared/util';
 import type {
   AccountEntity,
@@ -21,7 +21,7 @@ export const payeeQueries = {
     queryOptions<PayeeEntity[]>({
       queryKey: [...payeeQueries.lists()],
       queryFn: async () => {
-        const payees: PayeeEntity[] = (await send('payees-get')) ?? [];
+        const payees: PayeeEntity[] = (await server.getPayees()) ?? [];
         return translatePayees(payees);
       },
       placeholderData: [],
@@ -32,7 +32,7 @@ export const payeeQueries = {
     queryOptions<PayeeEntity[]>({
       queryKey: [...payeeQueries.lists(), 'common'],
       queryFn: async () => {
-        const payees: PayeeEntity[] = (await send('common-payees-get')) ?? [];
+        const payees: PayeeEntity[] = (await server.getCommonPayees()) ?? [];
         return translatePayees(payees);
       },
       placeholderData: [],
@@ -44,7 +44,7 @@ export const payeeQueries = {
       queryKey: [...payeeQueries.lists(), 'orphaned'],
       queryFn: async () => {
         const payees: Pick<PayeeEntity, 'id'>[] =
-          (await send('payees-get-orphaned')) ?? [];
+          (await server.getOrphanedPayees()) ?? [];
         return payees;
       },
       placeholderData: [],
@@ -55,7 +55,7 @@ export const payeeQueries = {
     queryOptions<Map<PayeeEntity['id'], number>>({
       queryKey: [...payeeQueries.lists(), 'ruleCounts'],
       queryFn: async () => {
-        const counts = await send('payees-get-rule-counts');
+        const counts = await server.getPayeeRuleCounts();
         return new Map(Object.entries(counts ?? {}));
       },
       placeholderData: new Map(),

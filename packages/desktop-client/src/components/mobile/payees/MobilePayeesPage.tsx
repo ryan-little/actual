@@ -5,7 +5,7 @@ import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
-import { send } from 'loot-core/platform/client/connection';
+import { server } from 'loot-core/platform/client/connection';
 import { getNormalisedString } from 'loot-core/shared/normalisation';
 import type { PayeeEntity, RuleEntity } from 'loot-core/types/models';
 
@@ -52,7 +52,7 @@ export function MobilePayeesPage() {
       // View associated rules for the payee
       if ((ruleCounts.get(payee.id) ?? 0) > 0) {
         try {
-          const associatedRules: RuleEntity[] = await send('payees-get-rules', {
+          const associatedRules: RuleEntity[] = await server.getPayeeRules({
             id: payee.id,
           });
           const ruleIds = associatedRules.map(rule => rule.id).join(',');
@@ -88,7 +88,7 @@ export function MobilePayeesPage() {
   const handlePayeeDelete = useCallback(
     async (payee: PayeeEntity) => {
       try {
-        await send('payees-batch-change', { deleted: [{ id: payee.id }] });
+        await server.batchChangePayees({ deleted: [{ id: payee.id }] });
         showUndoNotification({
           message: t('Payee "{{name}}" deleted successfully', {
             name: payee.name,

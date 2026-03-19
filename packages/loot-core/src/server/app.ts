@@ -18,22 +18,31 @@ type Events = {
 type UnlistenService = () => void;
 type Service = () => UnlistenService;
 
-class App<Handlers> {
+class App<THandlers> {
   events: Emitter<Events>;
-  handlers: Handlers;
+  handlers: THandlers;
   services: Service[];
   unlistenServices: UnlistenService[];
 
-  constructor() {
-    this.handlers = {} as Handlers;
+  constructor(handlers?: THandlers) {
+    this.handlers = {} as THandlers;
     this.services = [];
     this.events = mitt<Events>();
     this.unlistenServices = [];
+
+    if (handlers) {
+      for (const [name, func] of Object.entries(handlers)) {
+        this.method(
+          name as string & keyof THandlers,
+          func as THandlers[string & keyof THandlers],
+        );
+      }
+    }
   }
 
-  method<Name extends string & keyof Handlers>(
+  method<Name extends string & keyof THandlers>(
     name: Name,
-    func: Handlers[Name],
+    func: THandlers[Name],
   ) {
     if (this.handlers[name] != null) {
       throw new Error(
@@ -50,7 +59,7 @@ class App<Handlers> {
   combine(...apps) {
     for (const app of apps) {
       Object.keys(app.handlers).forEach(name => {
-        this.method(name as string & keyof Handlers, app.handlers[name]);
+        this.method(name as string & keyof THandlers, app.handlers[name]);
       });
 
       app.services.forEach(service => {
@@ -86,6 +95,6 @@ class App<Handlers> {
   }
 }
 
-export function createApp<T>() {
-  return new App<T>();
+export function createApp<THandlers>(handlers?: THandlers): App<THandlers> {
+  return new App<THandlers>(handlers);
 }

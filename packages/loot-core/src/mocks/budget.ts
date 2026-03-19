@@ -642,7 +642,7 @@ export async function createTestBudget(handlers: Handlers) {
   await runMutator(() =>
     batchMessages(async () => {
       for (const newPayee of newPayees) {
-        const id = await handlers['payee-create']({ name: newPayee.name });
+        const id = await handlers['createPayee']({ name: newPayee.name });
         payees.push({
           id,
           name: newPayee.name,
