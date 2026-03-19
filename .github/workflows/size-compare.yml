@@ -50,6 +50,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: web
           ref: ${{github.base_ref}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
       - name: Wait for ${{github.base_ref}} API build to succeed
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
         id: master-api-build
@@ -57,6 +59,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: api
           ref: ${{github.base_ref}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
       - name: Wait for ${{github.base_ref}} CLI build to succeed
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
         id: master-cli-build
@@ -64,6 +68,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: cli
           ref: ${{github.base_ref}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
 
       - name: Wait for PR build to succeed
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
@@ -72,6 +78,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: web
           ref: ${{github.event.pull_request.head.sha}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
       - name: Wait for API PR build to succeed
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
         id: wait-for-api-build
@@ -79,6 +87,8 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: api
           ref: ${{github.event.pull_request.head.sha}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
       - name: Wait for CLI PR build to succeed
         uses: fountainhead/action-wait-for-check@5a908a24814494009c4bb27c242ea38c93c593be # v1.2.0
         id: wait-for-cli-build
@@ -86,12 +96,32 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: cli
           ref: ${{github.event.pull_request.head.sha}}
+          timeoutSeconds: 1200
+          intervalSeconds: 30
 
       - name: Report build failure
-        if: steps.wait-for-web-build.outputs.conclusion == 'failure' || steps.wait-for-api-build.outputs.conclusion == 'failure' || steps.wait-for-cli-build.outputs.conclusion == 'failure'
+        if: |
+          steps.wait-for-web-build.outputs.conclusion == 'failure' ||
+          steps.wait-for-api-build.outputs.conclusion == 'failure' ||
+          steps.wait-for-cli-build.outputs.conclusion == 'failure' ||
+          steps.master-web-build.outputs.conclusion == 'failure' ||
+          steps.master-api-build.outputs.conclusion == 'failure' ||
+          steps.master-cli-build.outputs.conclusion == 'failure'
         run: |
           echo "Build failed on PR branch or ${{github.base_ref}}"
           exit 1
+      - name: Warn on incomplete builds
+        if: |
+          steps.wait-for-web-build.outputs.conclusion != 'success' ||
+          steps.wait-for-api-build.outputs.conclusion != 'success' ||
+          steps.wait-for-cli-build.outputs.conclusion != 'success' ||
+          steps.master-web-build.outputs.conclusion != 'success' ||
+          steps.master-api-build.outputs.conclusion != 'success' ||
+          steps.master-cli-build.outputs.conclusion != 'success'
+        run: |
+          echo "::warning::Some builds did not complete successfully. Bundle stats may be incomplete."
+          echo "Base branch - web: ${{ steps.master-web-build.outputs.conclusion }}, api: ${{ steps.master-api-build.outputs.conclusion }}, cli: ${{ steps.master-cli-build.outputs.conclusion }}"
+          echo "PR - web: ${{ steps.wait-for-web-build.outputs.conclusion }}, api: ${{ steps.wait-for-api-build.outputs.conclusion }}, cli: ${{ steps.wait-for-cli-build.outputs.conclusion }}"
 
       - name: Download web build artifact from ${{github.base_ref}}
         uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
@@ -102,6 +132,7 @@ jobs:
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: build-stats
           path: base
+          if_no_artifact_found: warn
       - name: Download API build artifact from ${{github.base_ref}}
         uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
         id: pr-api-build
@@ -111,41 +142,46 @@ jobs:
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: api-build-stats
           path: base
+          if_no_artifact_found: warn
       - name: Download build stats from PR
         uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
         with:
-          pr: ${{github.event.pull_request.number}}
+          commit: ${{github.event.pull_request.head.sha}}
           workflow: build.yml
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: build-stats
           path: head
           allow_forks: true
+          if_no_artifact_found: warn
       - name: Download API stats from PR
         uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
         with:
-          pr: ${{github.event.pull_request.number}}
+          commit: ${{github.event.pull_request.head.sha}}
           workflow: build.yml
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: api-build-stats
           path: head
           allow_forks: true
+          if_no_artifact_found: warn
       - name: Download CLI build artifact from ${{github.base_ref}}
-        uses: dawidd6/action-download-artifact@ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5 # v11
+        uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
         with:
           branch: ${{github.base_ref}}
           workflow: build.yml
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: cli-build-stats
           path: base
+          if_no_artifact_found: warn
       - name: Download CLI stats from PR
-        uses: dawidd6/action-download-artifact@ac66b43f0e6a346234dd65d4d0c8fbb31cb316e5 # v11
+        uses: dawidd6/action-download-artifact@1f8785ff7a5130826f848e7f72725c85d241860f # v18
         with:
-          pr: ${{github.event.pull_request.number}}
+          commit: ${{github.event.pull_request.head.sha}}
           workflow: build.yml
           workflow_conclusion: '' # ignore the conclusion of the workflow, since we already checked it
           name: cli-build-stats
           path: head
           allow_forks: true
+          if_no_artifact_found: warn
       - name: Strip content hashes from stats files
         run: |
           if [ -f ./head/web-stats.json ]; then
@@ -162,6 +198,7 @@ jobs:
             fi
           done
       - name: Generate combined bundle stats comment
+        if: ${{ !cancelled() }}
         run: |
           node packages/ci-actions/bin/bundle-stats-comment.mjs \
             --base desktop-client=./base/web-stats.json \
@@ -175,6 +212,7 @@ jobs:
             --identifier combined \
             --format pr-body > bundle-stats-comment.md
       - name: Post combined bundle stats comment
+        if: ${{ !cancelled() }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}

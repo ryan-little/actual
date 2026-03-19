@@ -5,7 +5,7 @@
  * Heavily inspired by https://github.com/twk3/rollup-size-compare-action (MIT).
  */
 
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -179,8 +179,19 @@ function parseArgs(argv) {
 }
 
 async function loadStats(filePath) {
+  const absolutePath = path.resolve(process.cwd(), filePath);
+
+  // Check if the file exists before trying to read it
   try {
-    const absolutePath = path.resolve(process.cwd(), filePath);
+    await access(absolutePath);
+  } catch {
+    console.error(
+      `[bundle-stats] Stats file not found: "${filePath}" — skipping`,
+    );
+    return null;
+  }
+
+  try {
     const fileContents = await readFile(absolutePath, 'utf8');
     const parsed = JSON.parse(fileContents);
 
@@ -196,7 +207,7 @@ async function loadStats(filePath) {
         ? error.message
         : 'Unknown error while parsing stats file';
     console.error(`[bundle-stats] Failed to parse "${filePath}": ${message}`);
-    throw new Error(`Failed to load stats file "${filePath}": ${message}`);
+    return null;
   }
 }
 
@@ -686,6 +697,13 @@ async function main() {
       `[bundle-stats] Loading head stats from: ${section.headPath}`,
     );
     const headStats = await loadStats(section.headPath);
+
+    if (!baseStats || !headStats) {
+      console.error(
+        `[bundle-stats] Skipping section "${section.name}": missing ${!baseStats ? 'base' : 'head'} stats`,
+      );
+      continue;
+    }
 
     const statsDiff = getStatsDiff(baseStats, headStats);
     const chunkDiff = getChunkModuleDiff(baseStats, headStats);
