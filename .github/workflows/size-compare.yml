@@ -199,20 +199,30 @@ jobs:
           done
       - name: Generate combined bundle stats comment
         if: ${{ !cancelled() }}
+        id: generate-comment
         run: |
+          ARGS=""
+          for bundle in "desktop-client=web-stats.json" "loot-core=loot-core-stats.json" "api=api-stats.json" "cli=cli-stats.json"; do
+            NAME="${bundle%%=*}"
+            FILE="${bundle#*=}"
+            if [ -f "./base/$FILE" ] && [ -f "./head/$FILE" ]; then
+              ARGS="$ARGS --base $NAME=./base/$FILE --head $NAME=./head/$FILE"
+            else
+              echo "::warning::Skipping $NAME: base or head stats file missing"
+            fi
+          done
+          if [ -z "$ARGS" ]; then
+            echo "::warning::No stats files available, skipping comment generation"
+            echo "has_comment=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           node packages/ci-actions/bin/bundle-stats-comment.mjs \
-            --base desktop-client=./base/web-stats.json \
-            --base loot-core=./base/loot-core-stats.json \
-            --base api=./base/api-stats.json \
-            --base cli=./base/cli-stats.json \
-            --head desktop-client=./head/web-stats.json \
-            --head loot-core=./head/loot-core-stats.json \
-            --head api=./head/api-stats.json \
-            --head cli=./head/cli-stats.json \
+            $ARGS \
             --identifier combined \
             --format pr-body > bundle-stats-comment.md
+          echo "has_comment=true" >> "$GITHUB_OUTPUT"
       - name: Post combined bundle stats comment
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.generate-comment.outputs.has_comment == 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
