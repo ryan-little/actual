@@ -6,12 +6,14 @@ import * as fs from '../platform/server/fs';
 import { logger, setVerboseMode } from '../platform/server/log';
 import * as sqlite from '../platform/server/sqlite';
 import { q } from '../shared/query';
+import type { QueryState } from '../shared/query';
 import { amountToInteger, integerToAmount } from '../shared/util';
 import type { Handlers } from '../types/handlers';
 
 import { app as accountsApp } from './accounts/app';
 import { app as adminApp } from './admin/app';
-import { installAPI } from './api';
+import { app as apiApp } from './api';
+import { createApp } from './app';
 import { aqlQuery } from './aql';
 import { app as authApp } from './auth/app';
 import { app as budgetApp } from './budget/app';
@@ -21,8 +23,7 @@ import * as db from './db';
 import * as encryption from './encryption';
 import { app as encryptionApp } from './encryption/app';
 import { app as filtersApp } from './filters/app';
-import { app } from './main-app';
-import { mutator, runHandler } from './mutators';
+import { mutator } from './mutators';
 import { app as notesApp } from './notes/app';
 import { app as payeesApp } from './payees/app';
 import { get } from './post';
@@ -41,38 +42,24 @@ import { app as transactionsApp } from './transactions/app';
 import * as rules from './transactions/transaction-rules';
 import { redo, undo } from './undo';
 
-// handlers
-
-// need to work around the type system here because the object
-// is /currently/ empty but we promise to fill it in later
-export let handlers = {} as unknown as Handlers;
-
-handlers['undo'] = mutator(async function () {
-  return undo();
-});
-
-handlers['redo'] = mutator(function () {
-  return redo();
-});
-
-handlers['make-filters-from-conditions'] = async function ({
+async function makeFiltersFromConditions({
   conditions,
-  applySpecialCases,
+  applySpecialCases = undefined,
 }) {
   return rules.conditionsToAQL(conditions, { applySpecialCases });
-};
+}
 
-handlers['query'] = async function (query) {
+async function query(query) {
   if (query['table'] == null) {
     throw new Error('query has no table, did you forgot to call `.serialize`?');
   }
 
   return aqlQuery(query);
-};
+}
 
-handlers['get-server-version'] = async function () {
+async function getServerVersion() {
   if (!getServer()) {
-    return { error: 'no-server' };
+    return { error: 'no-server' as const };
   }
 
   let version;
@@ -80,19 +67,19 @@ handlers['get-server-version'] = async function () {
     const res = await get(getServer().BASE_SERVER + '/info');
 
     const info = JSON.parse(res);
-    version = info.build.version;
+    version = info.build.version as string;
   } catch {
-    return { error: 'network-failure' };
+    return { error: 'network-failure' as const };
   }
 
   return { version };
-};
+}
 
-handlers['get-server-url'] = async function () {
+async function getServerUrl() {
   return getServer() && getServer().BASE_SERVER;
-};
+}
 
-handlers['set-server-url'] = async function ({ url, validate = true }) {
+async function setServerUrl({ url, validate = true }) {
   if (url == null) {
     await asyncStorage.removeItem('user-token');
   } else {
@@ -100,7 +87,7 @@ handlers['set-server-url'] = async function ({ url, validate = true }) {
 
     if (validate) {
       // Validate the server is running
-      const result = await runHandler(handlers['subscribe-needs-bootstrap'], {
+      const result = await mainApp.runHandler('subscribe-needs-bootstrap', {
         url,
       });
       if ('error' in result) {
@@ -113,20 +100,62 @@ handlers['set-server-url'] = async function ({ url, validate = true }) {
   await asyncStorage.setItem('did-bootstrap', true);
   setServer(url);
   return {};
-};
+}
 
-handlers['app-focused'] = async function () {
+async function appFocused() {
   if (prefs.getPrefs() && prefs.getPrefs().id) {
     // First we sync
     void fullSync();
   }
+}
+
+export type ServerHandlers = {
+  undo: () => Promise<void>;
+  redo: () => Promise<void>;
+
+  'make-filters-from-conditions': (arg: {
+    conditions: unknown;
+    applySpecialCases?: boolean;
+  }) => Promise<{ filters: unknown[] }>;
+
+  // oxlint-disable-next-line typescript/no-explicit-any
+  query: (query: QueryState) => Promise<{ data: any; dependencies: string[] }>;
+
+  'get-server-version': () => Promise<
+    { error: 'no-server' } | { error: 'network-failure' } | { version: string }
+  >;
+
+  'get-server-url': () => Promise<string | null>;
+
+  'set-server-url': (arg: {
+    url: string;
+    validate?: boolean;
+  }) => Promise<{ error?: string }>;
+
+  'app-focused': () => Promise<void>;
 };
 
-handlers = installAPI(handlers) as Handlers;
+const serverApp = createApp<ServerHandlers>({
+  undo: mutator(undo),
+  redo: mutator(redo),
+  'make-filters-from-conditions': makeFiltersFromConditions,
+  query,
+  'get-server-version': getServerVersion,
+  'get-server-url': getServerUrl,
+  'set-server-url': setServerUrl,
+  'app-focused': appFocused,
+});
 
-// A hack for now until we clean up everything
-app.handlers = handlers;
-app.combine(
+// Main app
+export const mainApp = createApp<Handlers>();
+
+mainApp.events.on('sync', event => {
+  connection.send('sync-event', event);
+});
+
+mainApp.combine(
+  serverApp,
+  apiApp,
   authApp,
   schedulesApp,
   budgetApp,
@@ -209,17 +238,7 @@ export async function initApp(isDev, socketName) {
   }
   setServer(url);
 
-  connection.init(socketName, app.handlers);
-
-  // Allow running DB queries locally
-  global.$query = aqlQuery;
-  global.$q = q;
-
-  if (isDev) {
-    global.$send = (name, args) => runHandler(app.handlers[name], args);
-    global.$db = db;
-    global.$setSyncingMode = setSyncingMode;
-  }
+  connection.init(socketName, mainApp);
 }
 
 type BaseInitConfig = {
@@ -278,25 +297,25 @@ export async function init(config: InitConfig) {
 
     if ('sessionToken' in config && config.sessionToken) {
       // Session token authentication
-      await runHandler(handlers['subscribe-set-token'], {
+      await mainApp.runHandler('subscribe-set-token', {
         token: config.sessionToken,
       });
       // Validate the token
-      const user = await runHandler(handlers['subscribe-get-user'], undefined);
+      const user = await mainApp.runHandler('subscribe-get-user', undefined);
       if (!user || user.tokenExpired === true) {
         // Clear invalid token
-        await runHandler(handlers['subscribe-set-token'], { token: '' });
+        await mainApp.runHandler('subscribe-set-token', { token: '' });
         throw new Error(
           'Authentication failed: invalid or expired session token',
         );
       }
       if (user.offline === true) {
         // Clear token since we can't validate
-        await runHandler(handlers['subscribe-set-token'], { token: '' });
+        await mainApp.runHandler('subscribe-set-token', { token: '' });
         throw new Error('Authentication failed: server offline or unreachable');
       }
     } else if ('password' in config && config.password) {
-      const result = await runHandler(handlers['subscribe-sign-in'], {
+      const result = await mainApp.runHandler('subscribe-sign-in', {
         password: config.password,
       });
       if (result?.error) {
@@ -308,7 +327,7 @@ export async function init(config: InitConfig) {
     // access to the server, we are doing things locally
     setServer(null);
 
-    app.events.on('load-budget', () => {
+    mainApp.events.on('load-budget', () => {
       setSyncingMode('offline');
     });
   }
@@ -321,14 +340,14 @@ export async function init(config: InitConfig) {
 export const lib = {
   getDataDir: fs.getDataDir,
   sendMessage: (msg, args) => connection.send(msg, args),
-  send: async <K extends keyof Handlers, T extends Handlers[K]>(
+  send: async <K extends keyof Handlers>(
     name: K,
-    args?: Parameters<T>[0],
-  ): Promise<Awaited<ReturnType<T>>> => {
-    const res = await runHandler(app.handlers[name], args);
-    return res;
+    args?: Parameters<Handlers[K]>[0],
+  ): Promise<Awaited<ReturnType<Handlers[K]>>> => {
+    const res = await mainApp.runHandler(name, args);
+    return res as Awaited<ReturnType<Handlers[K]>>;
   },
-  on: (name, func) => app.events.on(name, func),
+  on: (name, func) => mainApp.events.on(name, func),
   q,
   db,
   amountToInteger,

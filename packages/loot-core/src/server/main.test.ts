@@ -10,7 +10,7 @@ import * as monthUtils from '../shared/months';
 import * as budgetActions from './budget/actions';
 import * as budget from './budget/base';
 import * as db from './db';
-import { handlers } from './main';
+import { mainApp } from './main';
 import {
   disableGlobalMutations,
   enableGlobalMutations,
@@ -28,7 +28,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  await runHandler(handlers['close-budget']);
+  await mainApp.runHandler('close-budget');
   connection.resetEvents();
   enableGlobalMutations();
   global.currentMonth = null;
@@ -72,7 +72,7 @@ describe('Budgets', () => {
       'SELECT * FROM messages_clock',
     );
 
-    const { error } = await runHandler(handlers['load-budget'], {
+    const { error } = await mainApp.runHandler('load-budget', {
       id: 'test-budget',
     });
     expect(error).toBe(undefined);
@@ -92,7 +92,7 @@ describe('Budgets', () => {
 
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => null);
 
-    const { error } = await runHandler(handlers['load-budget'], {
+    const { error } = await mainApp.runHandler('load-budget', {
       id: 'test-budget',
     });
     // There should be an error and the budget should be unloaded
@@ -128,7 +128,7 @@ describe('Accounts', () => {
     });
 
     const id = 'test-transfer';
-    await runHandler(handlers['transaction-add'], {
+    await mainApp.runHandler('transaction-add', {
       id,
       account: 'one',
       amount: 5000,
@@ -140,7 +140,7 @@ describe('Accounts', () => {
     );
 
     let transaction = await db.getTransaction(id);
-    await runHandler(handlers['transaction-update'], {
+    await mainApp.runHandler('transaction-update', {
       ...(await db.getTransaction(id)),
       payee: 'transfer-three',
       date: '2017-01-03',
@@ -150,7 +150,7 @@ describe('Accounts', () => {
     );
 
     transaction = await db.getTransaction(id);
-    await runHandler(handlers['transaction-delete'], transaction);
+    await mainApp.runHandler('transaction-delete', transaction);
     differ.expectToMatchDiff(
       await db.all<db.DbTransaction>('SELECT * FROM transactions'),
     );
@@ -172,7 +172,7 @@ describe('Budget', () => {
       await db.insertCategory({ name: 'bar', cat_group: 'group1' });
     });
 
-    let bounds = await runHandler(handlers['get-budget-bounds']);
+    let bounds = await mainApp.runHandler('get-budget-bounds');
     expect(bounds.start).toBe('2016-10');
     expect(bounds.end).toBe('2018-01');
     expect(spreadsheet.meta().createdMonths).toMatchSnapshot();
@@ -181,7 +181,7 @@ describe('Budget', () => {
     // current earliest budget to test if it creates the necessary
     // budgets for the earlier months
     db.runQuery("INSERT INTO accounts (id, name) VALUES ('one', 'boa')");
-    await runHandler(handlers['transaction-add'], {
+    await mainApp.runHandler('transaction-add', {
       id: uuidv4(),
       date: '2016-05-06',
       amount: 50,
@@ -192,7 +192,7 @@ describe('Budget', () => {
     // budgets for the months in the future
     global.currentMonth = '2017-02';
 
-    bounds = await runHandler(handlers['get-budget-bounds']);
+    bounds = await mainApp.runHandler('get-budget-bounds');
     expect(bounds.start).toBe('2016-02');
     expect(bounds.end).toBe('2018-02');
     expect(spreadsheet.meta().createdMonths).toMatchSnapshot();
@@ -230,19 +230,19 @@ describe('Budget', () => {
         db.insertCategoryGroup({ id: 'group1', name: 'group1' }),
       );
       categories = [
-        await runHandler(handlers['category-create'], {
+        await mainApp.runHandler('category-create', {
           name: 'foo',
           groupId: 'group1',
         }),
-        await runHandler(handlers['category-create'], {
+        await mainApp.runHandler('category-create', {
           name: 'bar',
           groupId: 'group1',
         }),
-        await runHandler(handlers['category-create'], {
+        await mainApp.runHandler('category-create', {
           name: 'baz',
           groupId: 'group1',
         }),
-        await runHandler(handlers['category-create'], {
+        await mainApp.runHandler('category-create', {
           name: 'biz',
           groupId: 'group1',
         }),
@@ -259,14 +259,14 @@ describe('Budget', () => {
     };
     // Test insertions
     let changed = await captureChangedCells(() =>
-      runHandler(handlers['transaction-add'], trans),
+      mainApp.runHandler('transaction-add', trans),
     );
     expect(
       changed.sort((a, b) => (a > b ? 1 : a < b ? -1 : 0)),
     ).toMatchSnapshot();
     // Test updates
     changed = await captureChangedCells(async () => {
-      await runHandler(handlers['transaction-update'], {
+      await mainApp.runHandler('transaction-update', {
         ...(await db.getTransaction(trans.id)),
         amount: 7000,
       });
@@ -276,7 +276,7 @@ describe('Budget', () => {
     ).toMatchSnapshot();
     // Test deletions
     changed = await captureChangedCells(async () => {
-      await runHandler(handlers['transaction-delete'], { id: trans.id });
+      await mainApp.runHandler('transaction-delete', { id: trans.id });
     });
     expect(
       changed.sort((a, b) => (a > b ? 1 : a < b ? -1 : 0)),
@@ -298,7 +298,7 @@ describe('Categories', () => {
     expect(categories.length).toBe(2);
     expect(categories.find(cat => cat.name === 'foo')).not.toBeNull();
     expect(categories.find(cat => cat.name === 'bar')).not.toBeNull();
-    await runHandler(handlers['category-delete'], { id: 'foo' });
+    await mainApp.runHandler('category-delete', { id: 'foo' });
 
     categories = await db.getCategories();
     expect(categories.length).toBe(1);
@@ -355,7 +355,7 @@ describe('Categories', () => {
     let trans = await db.getTransaction(transId);
     expect(trans.category).toBe('foo');
 
-    await runHandler(handlers['category-delete'], {
+    await mainApp.runHandler('category-delete', {
       id: 'foo',
       transferId: 'bar',
     });
@@ -371,7 +371,7 @@ describe('Categories', () => {
     // Transfering an income category to an expense just doesn't make
     // sense. Make sure this doesn't do anything.
     await expect(
-      runHandler(handlers['category-delete'], {
+      mainApp.runHandler('category-delete', {
         id: 'income1',
         transferId: 'bar',
       }),
@@ -381,7 +381,7 @@ describe('Categories', () => {
     expect(categories.find(cat => cat.id === 'income1')).toBeDefined();
 
     // Make sure you can delete income categories
-    await runHandler(handlers['category-delete'], {
+    await mainApp.runHandler('category-delete', {
       id: 'income1',
       transferId: 'income2',
     });

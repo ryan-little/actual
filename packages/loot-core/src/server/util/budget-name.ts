@@ -1,12 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import * as fs from '../../platform/server/fs';
-import { handlers } from '../main';
+import { mainApp } from '../main';
 
 export async function uniqueBudgetName(
   initialName: string = 'My Finances',
 ): Promise<string> {
-  const budgets = await handlers['get-budgets']();
+  const budgets = await mainApp.runHandler('get-budgets');
   let idx = 1;
 
   // If there is a conflict, keep appending an index until there is no

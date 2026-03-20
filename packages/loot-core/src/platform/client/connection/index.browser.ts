@@ -99,9 +99,7 @@ export const server: T.ServerProxy = new Proxy({} as T.ServerProxy, {
     }
 
     if (!initPromise) {
-      throw new Error(
-        `Cannot use server proxy before init() has been called`,
-      );
+      throw new Error(`Cannot use server proxy before init() has been called`);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

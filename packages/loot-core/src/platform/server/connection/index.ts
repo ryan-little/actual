@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { APIError } from '../../../server/errors';
-import { isMutating, runHandler } from '../../../server/mutators';
+import { isMutating } from '../../../server/mutators';
 import { captureException } from '../../exceptions';
 import { logger } from '../log';
 
@@ -31,7 +31,7 @@ function coerceError(error) {
   return { type: 'ServerError', message: error.message, cause: error };
 }
 
-export const init: T.Init = function (serverChn, handlers) {
+export const init: T.Init = function (serverChn, app) {
   const serverChannel = serverChn as Window;
   getGlobalObject().__globalServerChannel = serverChannel;
 
@@ -54,14 +54,14 @@ export const init: T.Init = function (serverChn, handlers) {
 
       const { id, name, args, undoTag, catchErrors } = msg;
 
-      if (handlers[name]) {
-        runHandler(handlers[name], args, { undoTag, name }).then(
+      if (app.hasHandler(name)) {
+        app.runHandler(name, args, { undoTag, name }).then(
           result => {
             serverChannel.postMessage({
               type: 'reply',
               id,
               result: catchErrors ? { data: result, error: null } : result,
-              mutated: isMutating(handlers[name]),
+              mutated: isMutating(app.getHandler(name)),
               undoTag,
             });
           },

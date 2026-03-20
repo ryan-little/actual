@@ -1,7 +1,10 @@
 // @ts-strict-ignore
 import { captureBreadcrumb, captureException } from '../platform/exceptions';
 import { sequential } from '../shared/async';
-import type { HandlerFunctions, Handlers } from '../types/handlers';
+
+type Handler<TArgs extends unknown[] = unknown[], TReturn = unknown> = (
+  ...args: TArgs
+) => TReturn;
 
 const runningMethods = new Set();
 
@@ -11,7 +14,9 @@ let globalMutationsEnabled = false;
 
 let _latestHandlerNames = [];
 
-export function mutator<T extends HandlerFunctions>(handler: T): T {
+export function mutator<TArgs extends unknown[], TReturn>(
+  handler: Handler<TArgs, TReturn>,
+): Handler<TArgs, TReturn> {
   mutatingMethods.set(handler, true);
   return handler;
 }
@@ -38,11 +43,11 @@ function wait(time) {
   return new Promise(resolve => setTimeout(resolve, time));
 }
 
-export async function runHandler<T extends Handlers[keyof Handlers]>(
-  handler: T,
-  args?: Parameters<T>[0],
+export async function runHandler<TArgs extends unknown[], TReturn>(
+  handler: Handler<TArgs, Promise<TReturn>>,
+  args?: TArgs[0],
   { undoTag, name }: { undoTag?; name? } = {},
-): Promise<ReturnType<T>> {
+): Promise<TReturn> {
   // For debug reasons, track the latest handlers that have been
   // called
   _latestHandlerNames.push(name);
@@ -50,10 +55,16 @@ export async function runHandler<T extends Handlers[keyof Handlers]>(
     _latestHandlerNames = _latestHandlerNames.slice(-5);
   }
 
+  const invokeHandler = () =>
+    handler(...((args !== undefined ? [args] : []) as TArgs));
+
   if (mutatingMethods.has(handler)) {
-    return runMutator(() => handler(args), { undoTag }) as Promise<
-      ReturnType<T>
-    >;
+    // If already inside a mutator, call directly to avoid deadlocking the
+    // sequential queue.
+    if (currentContext !== null) {
+      return invokeHandler();
+    }
+    return runMutator(invokeHandler, { undoTag });
   }
 
   // When closing a file, it clears out all global state for the file. That
@@ -64,12 +75,12 @@ export async function runHandler<T extends Handlers[keyof Handlers]>(
     await flushRunningMethods();
   }
 
-  const promise = handler(args);
+  const promise = invokeHandler();
   runningMethods.add(promise);
   void promise.then(() => {
     runningMethods.delete(promise);
   });
-  return promise as Promise<ReturnType<T>>;
+  return promise;
 }
 
 // These are useful for tests. Only use them in tests.

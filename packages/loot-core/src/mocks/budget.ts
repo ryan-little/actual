@@ -2,11 +2,12 @@
 import { v4 as uuidv4 } from 'uuid';
 
 import { addTransactions } from '../server/accounts/sync';
+import type { App } from '../server/app';
 import { aqlQuery } from '../server/aql';
 import * as budgetActions from '../server/budget/actions';
 import * as budget from '../server/budget/base';
 import * as db from '../server/db';
-import { runHandler, runMutator } from '../server/mutators';
+import { runMutator } from '../server/mutators';
 import * as sheet from '../server/sheet';
 import { batchMessages, setSyncingMode } from '../server/sync';
 import * as monthUtils from '../shared/months';
@@ -84,7 +85,6 @@ function extractCommonThings(
 }
 
 async function fillPrimaryChecking(
-  handlers,
   account,
   payees: MockPayeeEntity[],
   groups: CategoryGroupEntity[],
@@ -255,7 +255,7 @@ async function fillPrimaryChecking(
   return addTransactions(account.id, transactions);
 }
 
-async function fillChecking(handlers, account, payees, groups) {
+async function fillChecking(app, account, payees, groups) {
   const { incomePayee, expensePayees, incomeGroup, expenseCategories } =
     extractCommonThings(payees, groups);
   const numTransactions = integer(20, 40);
@@ -297,13 +297,13 @@ async function fillChecking(handlers, account, payees, groups) {
     starting_balance_flag: true,
   });
 
-  await handlers['transactions-batch-update']({
+  await app.runHandler('transactions-batch-update', {
     added: transactions,
     fastMode: true,
   });
 }
 
-async function fillInvestment(handlers, account, payees, groups) {
+async function fillInvestment(app, account, payees, groups) {
   const { incomePayee, incomeGroup } = extractCommonThings(payees, groups);
 
   const numTransactions = integer(10, 30);
@@ -333,13 +333,13 @@ async function fillInvestment(handlers, account, payees, groups) {
     starting_balance_flag: true,
   });
 
-  await handlers['transactions-batch-update']({
+  await app.runHandler('transactions-batch-update', {
     added: transactions,
     fastMode: true,
   });
 }
 
-async function fillSavings(handlers, account, payees, groups) {
+async function fillSavings(app, account, payees, groups) {
   const { incomePayee, expensePayees, incomeGroup, expenseCategories } =
     extractCommonThings(payees, groups);
 
@@ -378,13 +378,13 @@ async function fillSavings(handlers, account, payees, groups) {
     starting_balance_flag: true,
   });
 
-  await handlers['transactions-batch-update']({
+  await app.runHandler('transactions-batch-update', {
     added: transactions,
     fastMode: true,
   });
 }
 
-async function fillMortgage(handlers, account, payees, groups) {
+async function fillMortgage(app, account, payees, groups) {
   const { incomePayee, incomeGroup } = extractCommonThings(payees, groups);
 
   const numTransactions = integer(7, 10);
@@ -415,13 +415,13 @@ async function fillMortgage(handlers, account, payees, groups) {
     });
   }
 
-  await handlers['transactions-batch-update']({
+  await app.runHandler('transactions-batch-update', {
     added: transactions,
     fastMode: true,
   });
 }
 
-async function fillOther(handlers, account, payees, groups) {
+async function fillOther(app, account, payees, groups) {
   const { incomePayee, incomeGroup } = extractCommonThings(payees, groups);
 
   const numTransactions = integer(3, 6);
@@ -453,7 +453,7 @@ async function fillOther(handlers, account, payees, groups) {
     });
   }
 
-  await handlers['transactions-batch-update']({
+  await app.runHandler('transactions-batch-update', {
     added: transactions,
     fastMode: true,
   });
@@ -594,7 +594,7 @@ async function createBudget(accounts, payees, groups) {
   await sheet.waitOnSpreadsheet();
 }
 
-export async function createTestBudget(handlers: Handlers) {
+export async function createTestBudget(app: App<Handlers>) {
   setSyncingMode('import');
 
   db.execQuery('PRAGMA journal_mode = OFF');
@@ -618,7 +618,7 @@ export async function createTestBudget(handlers: Handlers) {
 
   await runMutator(async () => {
     for (const account of accounts) {
-      account.id = await handlers['account-create'](account);
+      account.id = await app.runHandler('account-create', account);
     }
   });
 
@@ -642,7 +642,7 @@ export async function createTestBudget(handlers: Handlers) {
   await runMutator(() =>
     batchMessages(async () => {
       for (const newPayee of newPayees) {
-        const id = await handlers['createPayee']({ name: newPayee.name });
+        const id = await app.runHandler('createPayee', { name: newPayee.name });
         payees.push({
           id,
           name: newPayee.name,
@@ -690,7 +690,7 @@ export async function createTestBudget(handlers: Handlers) {
 
   await runMutator(async () => {
     for (const group of newCategoryGroups) {
-      const groupId = await handlers['category-group-create']({
+      const groupId = await app.runHandler('category-group-create', {
         name: group.name,
         isIncome: group.is_income,
       });
@@ -702,7 +702,7 @@ export async function createTestBudget(handlers: Handlers) {
       });
 
       for (const category of group.categories) {
-        const categoryId = await handlers['category-create']({
+        const categoryId = await app.runHandler('category-create', {
           ...category,
           isIncome: category.is_income,
           groupId,
@@ -717,7 +717,7 @@ export async function createTestBudget(handlers: Handlers) {
     }
   });
 
-  const allGroups = (await runHandler(handlers['get-categories'])).grouped;
+  const allGroups = (await app.runHandler('get-categories')).grouped;
 
   setSyncingMode('import');
 
@@ -725,26 +725,26 @@ export async function createTestBudget(handlers: Handlers) {
     batchMessages(async () => {
       for (const account of accounts) {
         if (account.name === 'Bank of America') {
-          await fillPrimaryChecking(handlers, account, payees, allGroups);
+          await fillPrimaryChecking(account, payees, allGroups);
         } else if (
           account.name === 'Capital One Checking' ||
           account.name === 'HSBC'
         ) {
-          await fillChecking(handlers, account, payees, allGroups);
+          await fillChecking(app, account, payees, allGroups);
         } else if (account.name === 'Ally Savings') {
-          await fillSavings(handlers, account, payees, allGroups);
+          await fillSavings(app, account, payees, allGroups);
         } else if (
           account.name === 'Vanguard 401k' ||
           account.name === 'Roth IRA'
         ) {
-          await fillInvestment(handlers, account, payees, allGroups);
+          await fillInvestment(app, account, payees, allGroups);
         } else if (account.name === 'Mortgage') {
-          await fillMortgage(handlers, account, payees, allGroups);
+          await fillMortgage(app, account, payees, allGroups);
         } else if (account.name === 'House Asset') {
-          await fillOther(handlers, account, payees, allGroups);
+          await fillOther(app, account, payees, allGroups);
         } else {
           console.error('Unknown account name for test budget: ', account.name);
-          await fillChecking(handlers, account, payees, allGroups);
+          await fillChecking(app, account, payees, allGroups);
         }
       }
     }),
@@ -773,7 +773,7 @@ export async function createTestBudget(handlers: Handlers) {
     );
     const lastDeposit = results[0];
 
-    await runHandler(handlers['transaction-update'], {
+    await app.runHandler('transaction-update', {
       ...lastDeposit,
       amount: lastDeposit.amount + -primaryBalance + integer(10000, 20000),
     });
@@ -791,7 +791,7 @@ export async function createTestBudget(handlers: Handlers) {
     batchMessages(async () => {
       const account = accounts.find(acc => acc.name === 'Bank of America');
 
-      await runHandler(handlers['schedule/create'], {
+      await app.runHandler('schedule/create', {
         schedule: {
           name: 'Phone bills',
           posts_transaction: false,
@@ -822,7 +822,7 @@ export async function createTestBudget(handlers: Handlers) {
         ],
       });
 
-      await runHandler(handlers['schedule/create'], {
+      await app.runHandler('schedule/create', {
         schedule: {
           name: 'Internet bill',
           posts_transaction: false,
@@ -847,7 +847,7 @@ export async function createTestBudget(handlers: Handlers) {
         ],
       });
 
-      await runHandler(handlers['schedule/create'], {
+      await app.runHandler('schedule/create', {
         schedule: {
           name: 'Wedding',
           posts_transaction: false,
@@ -868,7 +868,7 @@ export async function createTestBudget(handlers: Handlers) {
         ],
       });
 
-      await runHandler(handlers['schedule/create'], {
+      await app.runHandler('schedule/create', {
         schedule: {
           name: 'Utilities',
           posts_transaction: false,

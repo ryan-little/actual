@@ -17,7 +17,7 @@ import type { MetadataPrefs } from '../../types/prefs';
 import { setType as setBudgetType, triggerBudgetChanges } from '../budget/base';
 import * as db from '../db';
 import { PostError, SyncError } from '../errors';
-import { app } from '../main-app';
+import { mainApp } from '../main';
 import { runMutator } from '../mutators';
 import { postBinary } from '../post';
 import * as prefs from '../prefs';
@@ -410,7 +410,7 @@ export const applyMessages = sequential(async (messages: Message[]) => {
   _syncListeners.forEach(func => func(oldData, newData));
 
   const tables = getTablesFromMessages(messages.filter(msg => !msg.old));
-  app.events.emit('sync', {
+  mainApp.events.emit('sync', {
     type: 'applied',
     tables,
     data: newData,
@@ -444,16 +444,16 @@ async function errorHandler(e: Error) {
       // couldn't apply, which doesn't make any sense. Must be a bug
       // in the code. Send a specific error type for it for a custom
       // message.
-      app.events.emit('sync', {
+      mainApp.events.emit('sync', {
         type: 'error',
         subtype: 'apply-failure',
         meta: e.meta,
       });
     } else {
-      app.events.emit('sync', { type: 'error', meta: e.meta });
+      mainApp.events.emit('sync', { type: 'error', meta: e.meta });
     }
   } else if (e instanceof Timestamp.ClockDriftError) {
-    app.events.emit('sync', {
+    mainApp.events.emit('sync', {
       type: 'error',
       subtype: 'clock-drift',
       meta: { message: e.message },
@@ -574,7 +574,7 @@ export const fullSync = once(async function (): Promise<
   | { messages: Message[] }
   | { error: { message: string; reason: string; meta: unknown } }
 > {
-  app.events.emit('sync', { type: 'start' });
+  mainApp.events.emit('sync', { type: 'start' });
   let messages;
 
   try {
@@ -586,13 +586,13 @@ export const fullSync = once(async function (): Promise<
       if (e.reason === 'out-of-sync') {
         captureException(e);
 
-        app.events.emit('sync', {
+        mainApp.events.emit('sync', {
           type: 'error',
           subtype: 'out-of-sync',
           meta: e.meta,
         });
       } else if (e.reason === 'invalid-schema') {
-        app.events.emit('sync', {
+        mainApp.events.emit('sync', {
           type: 'error',
           subtype: 'invalid-schema',
           meta: e.meta,
@@ -601,36 +601,36 @@ export const fullSync = once(async function (): Promise<
         e.reason === 'decrypt-failure' ||
         e.reason === 'encrypt-failure'
       ) {
-        app.events.emit('sync', {
+        mainApp.events.emit('sync', {
           type: 'error',
           subtype: e.reason,
           meta: e.meta,
         });
       } else if (e.reason === 'clock-drift') {
-        app.events.emit('sync', {
+        mainApp.events.emit('sync', {
           type: 'error',
           subtype: 'clock-drift',
           meta: e.meta,
         });
       } else {
-        app.events.emit('sync', { type: 'error', meta: e.meta });
+        mainApp.events.emit('sync', { type: 'error', meta: e.meta });
       }
     } else if (e instanceof PostError) {
       logger.log(e);
       if (e.reason === 'unauthorized') {
-        app.events.emit('sync', { type: 'unauthorized' });
+        mainApp.events.emit('sync', { type: 'unauthorized' });
 
         // Set the user into read-only mode
         void asyncStorage.setItem('readOnly', 'true');
       } else if (e.reason === 'network-failure') {
-        app.events.emit('sync', { type: 'error', subtype: 'network' });
+        mainApp.events.emit('sync', { type: 'error', subtype: 'network' });
       } else {
-        app.events.emit('sync', { type: 'error', subtype: e.reason });
+        mainApp.events.emit('sync', { type: 'error', subtype: e.reason });
       }
     } else {
       captureException(e);
       // TODO: Send the message to the client and allow them to expand & view it
-      app.events.emit('sync', { type: 'error' });
+      mainApp.events.emit('sync', { type: 'error' });
     }
 
     return { error: { message: e.message, reason: e.reason, meta: e.meta } };
@@ -638,7 +638,7 @@ export const fullSync = once(async function (): Promise<
 
   const tables = getTablesFromMessages(messages);
 
-  app.events.emit('sync', {
+  mainApp.events.emit('sync', {
     type: 'success',
     tables,
     syncDisabled: checkSyncingMode('disabled'),

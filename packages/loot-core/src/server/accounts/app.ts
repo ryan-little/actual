@@ -28,7 +28,7 @@ import {
   PostError,
   TransactionError,
 } from '../errors';
-import { app as mainApp } from '../main-app';
+import { mainApp } from '../main';
 import { mutator } from '../mutators';
 import { get, post } from '../post';
 import { getServer } from '../server-config';
@@ -495,7 +495,7 @@ async function closeAccount({
           );
         }
 
-        await mainApp.handlers['transaction-add']({
+        await mainApp.runHandler('transaction-add', {
           id: uuidv4(),
           payee: transferPayee.id,
           amount: -balance,

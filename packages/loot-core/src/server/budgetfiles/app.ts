@@ -16,7 +16,7 @@ import * as db from '../db';
 import * as mappings from '../db/mappings';
 import { handleBudgetImport } from '../importers';
 import type { ImportableBudgetType } from '../importers';
-import { app as mainApp } from '../main-app';
+import { mainApp } from '../main';
 import { mutator } from '../mutators';
 import * as prefs from '../prefs';
 import { getServer } from '../server-config';
@@ -453,7 +453,7 @@ async function createBudget({
   }
 
   if (testMode) {
-    await createTestBudget(mainApp.handlers);
+    await createTestBudget(mainApp);
   }
 
   return {};

@@ -5,6 +5,8 @@ import type { Emitter } from 'mitt';
 import { captureException } from '../platform/exceptions';
 import type { ServerEvents } from '../types/server-events';
 
+import { runHandler as mutatorRunHandler } from './mutators';
+
 // This is a simple helper abstraction for defining methods exposed to
 // the client. It doesn't do much, but checks for naming conflicts and
 // makes it cleaner to combine methods. We call a group of related
@@ -18,11 +20,12 @@ type Events = {
 type UnlistenService = () => void;
 type Service = () => UnlistenService;
 
-class App<THandlers> {
-  events: Emitter<Events>;
-  handlers: THandlers;
-  services: Service[];
-  unlistenServices: UnlistenService[];
+export class App<THandlers> {
+  private handlers: THandlers;
+  private services: Service[];
+  private unlistenServices: UnlistenService[];
+
+  readonly events: Emitter<Events>;
 
   constructor(handlers?: THandlers) {
     this.handlers = {} as THandlers;
@@ -92,6 +95,34 @@ class App<THandlers> {
       }
     });
     this.unlistenServices = [];
+  }
+
+  getHandler<T extends keyof THandlers>(name: T): THandlers[T] {
+    return this.handlers[name];
+  }
+
+  hasHandler<T extends keyof THandlers>(name: T): boolean {
+    return this.getHandler(name) != null;
+  }
+
+  async runHandler<T extends keyof THandlers>(
+    name: T,
+    args?: THandlers[T] extends (...a: infer A) => unknown ? A[0] : never,
+    options?: Parameters<typeof mutatorRunHandler>[2],
+  ): Promise<
+    THandlers[T] extends (...a: infer _A) => Promise<infer R> ? R : never
+  > {
+    const handler = this.handlers[name];
+    if (!handler) {
+      throw new Error(`No handler for method: ${String(name)}`);
+    }
+    return mutatorRunHandler(
+      handler as Parameters<typeof mutatorRunHandler>[0],
+      args,
+      options,
+    ) as Promise<
+      THandlers[T] extends (...a: infer _A) => Promise<infer R> ? R : never
+    >;
   }
 }
 

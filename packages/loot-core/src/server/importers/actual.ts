@@ -2,14 +2,14 @@
 import * as fs from '../../platform/server/fs';
 import * as sqlite from '../../platform/server/sqlite';
 import * as cloudStorage from '../cloud-storage';
-import { handlers } from '../main';
+import { mainApp } from '../main';
 import { waitOnSpreadsheet } from '../sheet';
 
 export async function importActual(_filepath: string, buffer: Buffer) {
   // Importing Actual files is a special case because we can directly
   // write down the files, but because it doesn't go through the API
   // layer we need to duplicate some of the workflow
-  await handlers['close-budget']();
+  await mainApp.runHandler('close-budget');
 
   let id;
   try {
@@ -40,8 +40,8 @@ export async function importActual(_filepath: string, buffer: Buffer) {
 
   // Load the budget, force everything to be computed, and try
   // to upload it as a cloud file
-  await handlers['load-budget']({ id });
-  await handlers['get-budget-bounds']();
+  await mainApp.runHandler('load-budget', { id });
+  await mainApp.runHandler('get-budget-bounds');
   await waitOnSpreadsheet();
   await cloudStorage.upload().catch(() => {
     // Ignore errors

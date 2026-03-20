@@ -6,6 +6,7 @@ import type { BudgetFileHandlers } from '../server/budgetfiles/app';
 import type { DashboardHandlers } from '../server/dashboard/app';
 import type { EncryptionHandlers } from '../server/encryption/app';
 import type { FiltersHandlers } from '../server/filters/app';
+import type { ServerHandlers } from '../server/main';
 import type { NotesHandlers } from '../server/notes/app';
 import type { PayeeHandlers } from '../server/payees/app';
 import type { PreferencesHandlers } from '../server/preferences/app';
@@ -19,7 +20,6 @@ import type { ToolsHandlers } from '../server/tools/app';
 import type { TransactionHandlers } from '../server/transactions/app';
 
 import type { ApiHandlers } from './api-handlers';
-import type { ServerHandlers } from './server-handlers';
 
 export type Handlers = {} & ServerHandlers &
   ApiHandlers &

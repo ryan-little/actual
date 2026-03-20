@@ -1,6 +1,7 @@
 // @ts-strict-ignore
 import { getClock } from '@actual-app/crdt';
 
+import type { ApiHandlers } from '#types/api-handlers';
 import * as connection from '../platform/server/connection';
 import { logger } from '../platform/server/log';
 import {
@@ -23,7 +24,6 @@ import type {
   CategoryGroupEntity,
   ScheduleEntity,
 } from '../types/models';
-import type { ServerHandlers } from '../types/server-handlers';
 
 import { addTransactions } from './accounts/sync';
 import {
@@ -37,6 +37,7 @@ import {
   tagModel,
 } from './api-models';
 import type { AmountOPType, APIScheduleEntity } from './api-models';
+import { createApp } from './app';
 import { aqlQuery } from './aql';
 import * as cloudStorage from './cloud-storage';
 import type { RemoteFile } from './cloud-storage';
@@ -82,7 +83,7 @@ function withMutation<Params extends Array<unknown>, ReturnType>(
   };
 }
 
-let handlers = {} as unknown as Handlers;
+const handlers = {} as ApiHandlers;
 
 async function validateMonth(month) {
   if (!month.match(/^\d{4}-\d{2}$/)) {
@@ -1023,8 +1024,4 @@ handlers['api/get-server-version'] = async function () {
   return handlers['get-server-version']();
 };
 
-export function installAPI(serverHandlers: ServerHandlers) {
-  const merged = Object.assign({}, serverHandlers, handlers);
-  handlers = merged as Handlers;
-  return merged;
-}
+export const app = createApp(handlers);

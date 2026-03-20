@@ -1,6 +1,6 @@
 // @ts-strict-ignore
 import { APIError } from '../../../server/errors';
-import { isMutating, runHandler } from '../../../server/mutators';
+import { isMutating } from '../../../server/mutators';
 import { captureException } from '../../exceptions';
 import { logger } from '../log';
 
@@ -14,12 +14,12 @@ function coerceError(error) {
   return { type: 'ServerError', message: error.message, cause: error };
 }
 
-export const init: T.Init = function (_socketName, handlers) {
+export const init: T.Init = function (_socketName, app) {
   process.parentPort.on('message', ({ data }) => {
     const { id, name, args, undoTag, catchErrors } = data;
 
-    if (handlers[name]) {
-      runHandler(handlers[name], args, { undoTag, name }).then(
+    if (app.hasHandler(name)) {
+      app.runHandler(name, args, { undoTag, name }).then(
         result => {
           if (catchErrors) {
             result = { data: result, error: null };
@@ -30,7 +30,9 @@ export const init: T.Init = function (_socketName, handlers) {
             id,
             result,
             mutated:
-              isMutating(handlers[name]) && name !== 'undo' && name !== 'redo',
+              isMutating(app.getHandler(name)) &&
+              name !== 'undo' &&
+              name !== 'redo',
             undoTag,
           });
         },
