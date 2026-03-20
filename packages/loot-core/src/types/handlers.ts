@@ -6,7 +6,7 @@ import type { BudgetFileHandlers } from '../server/budgetfiles/app';
 import type { DashboardHandlers } from '../server/dashboard/app';
 import type { EncryptionHandlers } from '../server/encryption/app';
 import type { FiltersHandlers } from '../server/filters/app';
-import type { ServerHandlers } from '../server/main';
+import type { MiscHandlers } from '../server/main';
 import type { NotesHandlers } from '../server/notes/app';
 import type { PayeeHandlers } from '../server/payees/app';
 import type { PreferencesHandlers } from '../server/preferences/app';
@@ -19,7 +19,9 @@ import type { TagsHandlers } from '../server/tags/app';
 import type { ToolsHandlers } from '../server/tools/app';
 import type { TransactionHandlers } from '../server/transactions/app';
 
-export type Handlers = {} & ServerHandlers &
+import type { ApiHandlers } from './api-handlers';
+
+export type ServerHandlers = MiscHandlers &
   BudgetHandlers &
   DashboardHandlers &
   FiltersHandlers &
@@ -39,5 +41,7 @@ export type Handlers = {} & ServerHandlers &
   EncryptionHandlers &
   TagsHandlers &
   AuthHandlers;
+
+export type Handlers = {} & ServerHandlers & ApiHandlers;
 
 export type HandlerFunctions = Handlers[keyof Handlers];

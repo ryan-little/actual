@@ -9,7 +9,7 @@ import { q } from '../shared/query';
 import type { QueryState } from '../shared/query';
 import { amountToInteger, integerToAmount } from '../shared/util';
 import type { ApiHandlers } from '../types/api-handlers';
-import type { Handlers } from '../types/handlers';
+import type { Handlers, ServerHandlers } from '../types/handlers';
 
 import { app as accountsApp } from './accounts/app';
 import { app as adminApp } from './admin/app';
@@ -110,7 +110,7 @@ async function appFocused() {
   }
 }
 
-export type ServerHandlers = {
+export type MiscHandlers = {
   undo: () => Promise<void>;
   redo: () => Promise<void>;
 
@@ -136,7 +136,7 @@ export type ServerHandlers = {
   'app-focused': () => Promise<void>;
 };
 
-const serverApp = createApp<ServerHandlers>({
+const miscApp = createApp<MiscHandlers>({
   undo: mutator(undo),
   redo: mutator(redo),
   'make-filters-from-conditions': makeFiltersFromConditions,
@@ -147,15 +147,14 @@ const serverApp = createApp<ServerHandlers>({
   'app-focused': appFocused,
 });
 
-// Main app
-export const mainApp = createApp<Handlers>();
+const serverApp = createApp<ServerHandlers>();
 
-mainApp.events.on('sync', event => {
+serverApp.events.on('sync', event => {
   connection.send('sync-event', event);
 });
 
-mainApp.combine(
-  serverApp,
+serverApp.combine(
+  miscApp,
   authApp,
   schedulesApp,
   budgetApp,
@@ -176,6 +175,9 @@ mainApp.combine(
   encryptionApp,
   tagsApp,
 );
+
+export const mainApp = createApp<Handlers>();
+mainApp.combine(apiApp, serverApp);
 
 export function getDefaultDocumentDir() {
   return fs.join(process.env.ACTUAL_DOCUMENT_DIR, 'Actual');
@@ -337,9 +339,6 @@ export async function init(config: InitConfig) {
 
 // Export a few things required for the platform
 
-const combinedApp = createApp<ApiHandlers & Handlers>();
-combinedApp.combine(apiApp, mainApp);
-
 export const lib = {
   getDataDir: fs.getDataDir,
   sendMessage: (msg, args) => connection.send(msg, args),
@@ -347,10 +346,10 @@ export const lib = {
     name: K,
     args?: Parameters<Handlers[K]>[0],
   ): Promise<Awaited<ReturnType<Handlers[K]>>> => {
-    const res = await combinedApp.runHandler(name, args);
+    const res = await mainApp.runHandler(name, args);
     return res as Awaited<ReturnType<Handlers[K]>>;
   },
-  on: (name, func) => combinedApp.events.on(name, func),
+  on: (name, func) => mainApp.events.on(name, func),
   q,
   db,
   amountToInteger,
