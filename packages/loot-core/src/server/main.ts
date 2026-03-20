@@ -8,7 +8,7 @@ import * as sqlite from '../platform/server/sqlite';
 import { q } from '../shared/query';
 import type { QueryState } from '../shared/query';
 import { amountToInteger, integerToAmount } from '../shared/util';
-import { type ApiHandlers } from '../types/api-handlers';
+import type { ApiHandlers } from '../types/api-handlers';
 import type { Handlers } from '../types/handlers';
 
 import { app as accountsApp } from './accounts/app';
