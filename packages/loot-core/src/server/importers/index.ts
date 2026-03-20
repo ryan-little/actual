@@ -42,17 +42,17 @@ export async function handleBudgetImport(
     }
 
     try {
-      await mainApp.runHandler('api/start-import', { budgetName });
+      await mainApp['api/start-import']({ budgetName });
     } catch (e) {
       logger.error('failed to start import', e);
       return { error: 'unknown' };
     }
     await importer.doImport(data);
   } catch (e) {
-    await mainApp.runHandler('api/abort-import');
+    await mainApp['api/abort-import']();
     logger.error('failed to run import', e);
     return { error: 'unknown' };
   }
 
-  await mainApp.runHandler('api/finish-import');
+  await mainApp['api/finish-import']();
 }

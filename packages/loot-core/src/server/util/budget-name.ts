@@ -6,7 +6,7 @@ import { mainApp } from '../main';
 export async function uniqueBudgetName(
   initialName: string = 'My Finances',
 ): Promise<string> {
-  const budgets = await mainApp.runHandler('get-budgets');
+  const budgets = await mainApp['get-budgets']();
   let idx = 1;
 
   // If there is a conflict, keep appending an index until there is no

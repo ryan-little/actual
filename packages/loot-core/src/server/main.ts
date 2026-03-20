@@ -87,7 +87,7 @@ async function setServerUrl({ url, validate = true }) {
 
     if (validate) {
       // Validate the server is running
-      const result = await mainApp.runHandler('subscribe-needs-bootstrap', {
+      const result = await mainApp['subscribe-needs-bootstrap']({
         url,
       });
       if ('error' in result) {
@@ -297,25 +297,25 @@ export async function init(config: InitConfig) {
 
     if ('sessionToken' in config && config.sessionToken) {
       // Session token authentication
-      await mainApp.runHandler('subscribe-set-token', {
+      await mainApp['subscribe-set-token']({
         token: config.sessionToken,
       });
       // Validate the token
-      const user = await mainApp.runHandler('subscribe-get-user', undefined);
+      const user = await mainApp['subscribe-get-user']();
       if (!user || user.tokenExpired === true) {
         // Clear invalid token
-        await mainApp.runHandler('subscribe-set-token', { token: '' });
+        await mainApp['subscribe-set-token']({ token: '' });
         throw new Error(
           'Authentication failed: invalid or expired session token',
         );
       }
       if (user.offline === true) {
         // Clear token since we can't validate
-        await mainApp.runHandler('subscribe-set-token', { token: '' });
+        await mainApp['subscribe-set-token']({ token: '' });
         throw new Error('Authentication failed: server offline or unreachable');
       }
     } else if ('password' in config && config.password) {
-      const result = await mainApp.runHandler('subscribe-sign-in', {
+      const result = await mainApp['subscribe-sign-in']({
         password: config.password,
       });
       if (result?.error) {

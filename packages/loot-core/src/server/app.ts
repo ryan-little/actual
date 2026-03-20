@@ -126,6 +126,20 @@ export class App<THandlers> {
   }
 }
 
-export function createApp<THandlers>(handlers?: THandlers): App<THandlers> {
-  return new App<THandlers>(handlers);
+export function createApp<THandlers>(
+  handlers?: THandlers,
+): App<THandlers> & THandlers {
+  const app = new App<THandlers>(handlers);
+  return new Proxy(app, {
+    get(target, prop, receiver) {
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver);
+      }
+      return new Proxy(target.runHandler.bind(target), {
+        apply(boundFn, _thisArg, [args]) {
+          return boundFn(prop as keyof THandlers, args);
+        },
+      });
+    },
+  }) as App<THandlers> & THandlers;
 }

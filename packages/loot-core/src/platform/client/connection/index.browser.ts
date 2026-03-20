@@ -84,7 +84,6 @@ function handleMessage(msg) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const server: T.ServerProxy = new Proxy({} as T.ServerProxy, {
   get(_target, prop: string | symbol) {
     if (typeof prop === 'symbol') {

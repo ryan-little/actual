@@ -495,7 +495,7 @@ async function closeAccount({
           );
         }
 
-        await mainApp.runHandler('transaction-add', {
+        await mainApp['transaction-add']({
           id: uuidv4(),
           payee: transferPayee.id,
           amount: -balance,

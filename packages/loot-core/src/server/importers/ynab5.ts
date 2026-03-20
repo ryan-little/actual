@@ -6,6 +6,7 @@ import * as monthUtils from '../../shared/months';
 import { q } from '../../shared/query';
 import { groupBy, sortByKey } from '../../shared/util';
 import type { RecurConfig, RecurPattern, RuleEntity } from '../../types/models';
+import { aqlQuery } from '../aql';
 import { mainApp } from '../main';
 import { ruleModel } from '../transactions/transaction-rules';
 
@@ -271,7 +272,7 @@ function importAccounts(data: Budget, entityIdMap: Map<string, string>) {
   return Promise.all(
     data.accounts.map(async account => {
       if (!account.deleted) {
-        const id = await mainApp.runHandler('api/account-create', {
+        const id = await mainApp['api/account-create']({
           account: {
             name: account.name,
             offbudget: account.on_budget ? false : true,
@@ -291,7 +292,7 @@ async function importCategories(
   // Hidden categories are put in its own group by YNAB,
   // so it's already handled.
 
-  const categories = await mainApp.runHandler('api/categories-get', {
+  const categories = await mainApp['api/categories-get']({
     grouped: false,
   });
   const incomeCatId = findIdByName(categories, 'Income');
@@ -336,7 +337,7 @@ async function importCategories(
     while (true) {
       const name = count === 0 ? baseName : `${baseName} (${count})`;
       try {
-        const id = await mainApp.runHandler('api/category-group-create', {
+        const id = await mainApp['api/category-group-create']({
           group: { ...params, name },
         });
         return { id, name };
@@ -361,7 +362,7 @@ async function importCategories(
     while (true) {
       const name = count === 0 ? baseName : `${baseName} (${count})`;
       try {
-        const id = await mainApp.runHandler('api/category-create', {
+        const id = await mainApp['api/category-create']({
           category: { ...params, name },
         });
         return { id, name };
@@ -393,7 +394,7 @@ async function importCategories(
         groupId = createdGroup.id;
         entityIdMap.set(group.id, groupId);
         if (group.note) {
-          void mainApp.runHandler('notes-save', {
+          void mainApp['notes-save']({
             id: groupId,
             note: group.note,
           });
@@ -434,7 +435,7 @@ async function importCategories(
               });
               entityIdMap.set(cat.id, createdCategory.id);
               if (cat.note) {
-                void mainApp.runHandler('notes-save', {
+                void mainApp['notes-save']({
                   id: createdCategory.id,
                   note: cat.note,
                 });
@@ -451,7 +452,7 @@ function importPayees(data: Budget, entityIdMap: Map<string, string>) {
   return Promise.all(
     data.payees.map(async payee => {
       if (!payee.deleted) {
-        const id = await mainApp.runHandler('api/payee-create', {
+        const id = await mainApp['api/payee-create']({
           payee: { name: payee.name },
         });
         entityIdMap.set(payee.id, id);
@@ -498,7 +499,7 @@ async function importPayeeLocations(
 
     try {
       // Create the payee location in Actual
-      await mainApp.runHandler('createPayeeLocation', {
+      await mainApp.createPayeeLocation({
         payeeId: actualPayeeId,
         latitude,
         longitude,
@@ -557,7 +558,7 @@ async function importFlagsAsTags(
 
   await Promise.all(
     [...tagsToCreate.entries()].map(async ([tag, color]) => {
-      await mainApp.runHandler('tags-create', {
+      await mainApp['tags-create']({
         tag,
         color,
         description: 'Imported from YNAB',
@@ -571,8 +572,8 @@ async function importTransactions(
   entityIdMap: Map<string, string>,
   flagNameConflicts: Set<string>,
 ) {
-  const payees = await mainApp.runHandler('api/payees-get');
-  const categories = await mainApp.runHandler('api/categories-get', {
+  const payees = await mainApp['api/payees-get']();
+  const categories = await mainApp['api/categories-get']({
     grouped: false,
   });
   const incomeCatId = findIdByName(categories, 'Income');
@@ -837,7 +838,7 @@ async function importTransactions(
         })
         .filter(x => x);
 
-      await mainApp.runHandler('api/transactions-add', {
+      await mainApp['api/transactions-add']({
         accountId: entityIdMap.get(accountId),
         transactions: toImport,
         learnCategories: true,
@@ -861,7 +862,7 @@ async function importScheduledTransactions(
     return;
   }
 
-  const payees = await mainApp.runHandler('api/payees-get');
+  const payees = await mainApp['api/payees-get']();
   const payeesByTransferAcct = payees
     .filter(payee => payee?.transfer_acct)
     .map(payee => [payee.transfer_acct, payee] as [string, Payee]);
@@ -884,7 +885,7 @@ async function importScheduledTransactions(
 
     while (true) {
       try {
-        return await mainApp.runHandler('api/schedule-create', {
+        return await mainApp['api/schedule-create']({
           ...params,
           name: params.name,
         });
@@ -902,19 +903,16 @@ async function importScheduledTransactions(
   async function getRuleForSchedule(
     scheduleId: string,
   ): Promise<RuleEntity | null> {
-    const { data: ruleId } = (await mainApp.runHandler('api/query', {
-      query: q('schedules')
-        .filter({ id: scheduleId })
-        .calculate('rule')
-        .serialize(),
-    })) as { data: string | null };
+    const { data: ruleId } = (await aqlQuery(
+      q('schedules').filter({ id: scheduleId }).calculate('rule').serialize(),
+    )) as { data: string | null };
     if (!ruleId) {
       return null;
     }
 
-    const { data: ruleData } = (await mainApp.runHandler('api/query', {
-      query: q('rules').filter({ id: ruleId }).select('*').serialize(),
-    })) as { data: Array<Record<string, unknown>> };
+    const { data: ruleData } = (await aqlQuery(
+      q('rules').filter({ id: ruleId }).select('*').serialize(),
+    )) as { data: Array<Record<string, unknown>> };
     const ruleRow = ruleData?.[0];
     if (!ruleRow) {
       return null;
@@ -973,7 +971,7 @@ async function importScheduledTransactions(
           value: scheduleNotes,
         });
 
-        await mainApp.runHandler('api/rule-update', {
+        await mainApp['api/rule-update']({
           rule: buildRuleUpdate(rule, actions),
         });
       }
@@ -1008,7 +1006,7 @@ async function importScheduledTransactions(
         value: categoryId,
       });
 
-      await mainApp.runHandler('api/rule-update', {
+      await mainApp['api/rule-update']({
         rule: buildRuleUpdate(rule, actions),
       });
     }
@@ -1087,7 +1085,7 @@ async function importScheduledTransactions(
         }
       });
 
-      await mainApp.runHandler('api/rule-update', {
+      await mainApp['api/rule-update']({
         rule: buildRuleUpdate(rule, actions),
       });
     }
@@ -1114,7 +1112,7 @@ async function importBudgets(data: Budget, entityIdMap: Map<string, string>) {
     'Credit Card Payments',
   );
 
-  await mainApp.runHandler('api/batch-budget-start');
+  await mainApp['api/batch-budget-start']();
   try {
     for (const budget of budgets) {
       const month = monthUtils.monthFromDate(budget.month);
@@ -1132,7 +1130,7 @@ async function importBudgets(data: Budget, entityIdMap: Map<string, string>) {
             return;
           }
 
-          await mainApp.runHandler('api/budget-set-amount', {
+          await mainApp['api/budget-set-amount']({
             month,
             categoryId: catId,
             amount,
@@ -1141,7 +1139,7 @@ async function importBudgets(data: Budget, entityIdMap: Map<string, string>) {
       );
     }
   } finally {
-    await mainApp.runHandler('api/batch-budget-end');
+    await mainApp['api/batch-budget-end']();
   }
 }
 

@@ -9,7 +9,7 @@ export async function importActual(_filepath: string, buffer: Buffer) {
   // Importing Actual files is a special case because we can directly
   // write down the files, but because it doesn't go through the API
   // layer we need to duplicate some of the workflow
-  await mainApp.runHandler('close-budget');
+  await mainApp['close-budget']();
 
   let id;
   try {
@@ -40,8 +40,8 @@ export async function importActual(_filepath: string, buffer: Buffer) {
 
   // Load the budget, force everything to be computed, and try
   // to upload it as a cloud file
-  await mainApp.runHandler('load-budget', { id });
-  await mainApp.runHandler('get-budget-bounds');
+  await mainApp['load-budget']({ id });
+  await mainApp['get-budget-bounds']();
   await waitOnSpreadsheet();
   await cloudStorage.upload().catch(() => {
     // Ignore errors

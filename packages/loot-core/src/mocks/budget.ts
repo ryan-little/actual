@@ -618,7 +618,7 @@ export async function createTestBudget(app: App<Handlers>) {
 
   await runMutator(async () => {
     for (const account of accounts) {
-      account.id = await app.runHandler('account-create', account);
+      account.id = await app['account-create'](account);
     }
   });
 
@@ -642,7 +642,7 @@ export async function createTestBudget(app: App<Handlers>) {
   await runMutator(() =>
     batchMessages(async () => {
       for (const newPayee of newPayees) {
-        const id = await app.runHandler('createPayee', { name: newPayee.name });
+        const id = await app['createPayee']({ name: newPayee.name });
         payees.push({
           id,
           name: newPayee.name,
@@ -690,7 +690,7 @@ export async function createTestBudget(app: App<Handlers>) {
 
   await runMutator(async () => {
     for (const group of newCategoryGroups) {
-      const groupId = await app.runHandler('category-group-create', {
+      const groupId = await app['category-group-create']({
         name: group.name,
         isIncome: group.is_income,
       });
@@ -702,7 +702,7 @@ export async function createTestBudget(app: App<Handlers>) {
       });
 
       for (const category of group.categories) {
-        const categoryId = await app.runHandler('category-create', {
+        const categoryId = await app['category-create']({
           ...category,
           isIncome: category.is_income,
           groupId,
@@ -717,7 +717,7 @@ export async function createTestBudget(app: App<Handlers>) {
     }
   });
 
-  const allGroups = (await app.runHandler('get-categories')).grouped;
+  const allGroups = (await app['get-categories']()).grouped;
 
   setSyncingMode('import');
 
@@ -773,7 +773,7 @@ export async function createTestBudget(app: App<Handlers>) {
     );
     const lastDeposit = results[0];
 
-    await app.runHandler('transaction-update', {
+    await app['transaction-update']({
       ...lastDeposit,
       amount: lastDeposit.amount + -primaryBalance + integer(10000, 20000),
     });
@@ -791,7 +791,7 @@ export async function createTestBudget(app: App<Handlers>) {
     batchMessages(async () => {
       const account = accounts.find(acc => acc.name === 'Bank of America');
 
-      await app.runHandler('schedule/create', {
+      await app['schedule/create']({
         schedule: {
           name: 'Phone bills',
           posts_transaction: false,
@@ -822,7 +822,7 @@ export async function createTestBudget(app: App<Handlers>) {
         ],
       });
 
-      await app.runHandler('schedule/create', {
+      await app['schedule/create']({
         schedule: {
           name: 'Internet bill',
           posts_transaction: false,
@@ -847,7 +847,7 @@ export async function createTestBudget(app: App<Handlers>) {
         ],
       });
 
-      await app.runHandler('schedule/create', {
+      await app['schedule/create']({
         schedule: {
           name: 'Wedding',
           posts_transaction: false,
@@ -868,7 +868,7 @@ export async function createTestBudget(app: App<Handlers>) {
         ],
       });
 
-      await app.runHandler('schedule/create', {
+      await app['schedule/create']({
         schedule: {
           name: 'Utilities',
           posts_transaction: false,
