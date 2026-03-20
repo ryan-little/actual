@@ -304,7 +304,8 @@ export function registerQueryCommand(program: Command) {
           ? buildQueryFromFile(parsed, cmdOpts.table)
           : buildQueryFromFlags(cmdOpts);
 
-        const result = await api.aqlQuery(queryObj);
+        const result =
+          (await api.aqlQuery(queryObj)) as { data: unknown };
 
         if (cmdOpts.count) {
           printOutput({ count: result.data }, opts.format);
