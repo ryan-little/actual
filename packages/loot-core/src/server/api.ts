@@ -1,7 +1,6 @@
 // @ts-strict-ignore
 import { getClock } from '@actual-app/crdt';
 
-import type { ApiHandlers } from '#types/api-handlers';
 import * as connection from '../platform/server/connection';
 import { logger } from '../platform/server/log';
 import {
@@ -18,7 +17,7 @@ import {
   updateTransaction,
 } from '../shared/transactions';
 import { integerToAmount } from '../shared/util';
-import type { Handlers } from '../types/handlers';
+import type { ApiHandlers } from '../types/api-handlers';
 import type {
   AccountEntity,
   CategoryGroupEntity,
@@ -43,6 +42,7 @@ import * as cloudStorage from './cloud-storage';
 import type { RemoteFile } from './cloud-storage';
 import * as db from './db';
 import { APIError } from './errors';
+import { mainApp } from './main';
 import { runMutator } from './mutators';
 import * as prefs from './prefs';
 import * as sheet from './sheet';
@@ -91,7 +91,7 @@ async function validateMonth(month) {
   }
 
   if (!IMPORT_MODE) {
-    const { start, end } = await handlers['get-budget-bounds']();
+    const { start, end } = await mainApp['get-budget-bounds']();
     const range = monthUtils.range(start, end);
     if (!range.includes(month)) {
       throw APIError('No budget exists for month: ' + month);
@@ -163,7 +163,7 @@ handlers['api/load-budget'] = async function ({ id }) {
 
   if (currentId !== id) {
     connection.send('start-load');
-    const { error } = await handlers['load-budget']({ id });
+    const { error } = await mainApp['load-budget']({ id });
 
     if (!error) {
       connection.send('finish-load');
@@ -178,16 +178,16 @@ handlers['api/load-budget'] = async function ({ id }) {
 handlers['api/download-budget'] = async function ({ syncId, password }) {
   const { id: currentId } = prefs.getPrefs() || {};
   if (currentId) {
-    await handlers['close-budget']();
+    await mainApp['close-budget']();
   }
 
-  const budgets = await handlers['get-budgets']();
+  const budgets = await mainApp['get-budgets']();
   const localBudget = budgets.find(b => b.groupId === syncId);
   let remoteBudget: RemoteFile;
 
   // Load a remote file if we could not find the file locally
   if (!localBudget) {
-    const files = await handlers['get-remote-files']();
+    const files = await mainApp['get-remote-files']();
     if (!files) {
       throw new Error('Could not get remote files');
     }
@@ -211,7 +211,7 @@ handlers['api/download-budget'] = async function ({ syncId, password }) {
       );
     }
 
-    const result = await handlers['key-test']({
+    const result = await mainApp['key-test']({
       cloudFileId: remoteBudget ? remoteBudget.fileId : localBudget.cloudFileId,
       password,
     });
@@ -222,8 +222,8 @@ handlers['api/download-budget'] = async function ({ syncId, password }) {
 
   // Sync the local budget file
   if (localBudget) {
-    await handlers['load-budget']({ id: localBudget.id });
-    const result = await handlers['sync-budget']();
+    await mainApp['load-budget']({ id: localBudget.id });
+    const result = await mainApp['sync-budget']();
     if (result.error) {
       throw new Error(getSyncError(result.error.reason, localBudget.id));
     }
@@ -231,19 +231,19 @@ handlers['api/download-budget'] = async function ({ syncId, password }) {
   }
 
   // Download the remote file (no need to perform a sync as the file will already be up-to-date)
-  const result = await handlers['download-budget']({
+  const result = await mainApp['download-budget']({
     cloudFileId: remoteBudget.fileId,
   });
   if (result.error) {
     logger.log('Full error details', result.error);
     throw new Error(getDownloadError(result.error));
   }
-  await handlers['load-budget']({ id: result.id });
+  await mainApp['load-budget']({ id: result.id });
 };
 
 handlers['api/get-budgets'] = async function () {
-  const budgets = await handlers['get-budgets']();
-  const files = (await handlers['get-remote-files']()) || [];
+  const budgets = await mainApp['get-budgets']();
+  const files = (await mainApp['get-remote-files']()) || [];
   return [
     ...budgets.map(file => budgetModel.toExternal(file)),
     ...files.map(file => remoteFileModel.toExternal(file)).filter(file => file),
@@ -252,7 +252,7 @@ handlers['api/get-budgets'] = async function () {
 
 handlers['api/sync'] = async function () {
   const { id } = prefs.getPrefs();
-  const result = await handlers['sync-budget']();
+  const result = await mainApp['sync-budget']();
   if (result.error) {
     throw new Error(getSyncError(result.error.reason, id));
   }
@@ -263,13 +263,13 @@ handlers['api/bank-sync'] = async function (args) {
   const allErrors = [];
 
   if (!batchSync) {
-    const { errors } = await handlers['accounts-bank-sync']({
+    const { errors } = await mainApp['bank-sync']({
       ids: [args.accountId],
     });
 
     allErrors.push(...errors);
   } else {
-    const accountsData = await handlers['accounts-get']();
+    const accountsData = await mainApp['accounts-get']();
     const accountIdsToSync = accountsData.map(a => a.id);
     const simpleFinAccounts = accountsData.filter(
       a => a.account_sync_source === 'simpleFin',
@@ -277,14 +277,14 @@ handlers['api/bank-sync'] = async function (args) {
     const simpleFinAccountIds = simpleFinAccounts.map(a => a.id);
 
     if (simpleFinAccounts.length > 1) {
-      const res = await handlers['simplefin-batch-sync']({
+      const res = await mainApp['simplefin-batch-sync']({
         ids: simpleFinAccountIds,
       });
 
       res.forEach(a => allErrors.push(...a.res.errors));
     }
 
-    const { errors } = await handlers['accounts-bank-sync']({
+    const { errors } = await mainApp['accounts-bank-sync']({
       ids: accountIdsToSync.filter(a => !simpleFinAccountIds.includes(a)),
     });
 
@@ -299,10 +299,10 @@ handlers['api/bank-sync'] = async function (args) {
 
 handlers['api/start-import'] = async function ({ budgetName }) {
   // Notify UI to close budget
-  await handlers['close-budget']();
+  await mainApp['close-budget']();
 
   // Create the budget
-  await handlers['create-budget']({ budgetName, avoidUpload: true });
+  await mainApp['create-budget']({ budgetName, avoidUpload: true });
 
   // Clear out the default expense categories
   db.runQuery('DELETE FROM categories WHERE is_income = 0');
@@ -324,10 +324,10 @@ handlers['api/finish-import'] = async function () {
   // the spreadsheet, but we can't just recreate the spreadsheet
   // either; there is other internal state that isn't created
   const { id } = prefs.getPrefs();
-  await handlers['close-budget']();
-  await handlers['load-budget']({ id });
+  await mainApp['close-budget']();
+  await mainApp['load-budget']({ id });
 
-  await handlers['get-budget-bounds']();
+  await mainApp['get-budget-bounds']();
   await sheet.waitOnSpreadsheet();
 
   await cloudStorage.upload().catch(() => {
@@ -344,8 +344,8 @@ handlers['api/abort-import'] = async function () {
 
     const { id } = prefs.getPrefs();
 
-    await handlers['close-budget']();
-    await handlers['delete-budget']({ id });
+    await mainApp['close-budget']();
+    await mainApp['delete-budget']({ id });
     connection.send('show-budgets');
   }
 
@@ -359,7 +359,7 @@ handlers['api/query'] = async function ({ query }) {
 
 handlers['api/budget-months'] = async function () {
   checkFileOpen();
-  const { start, end } = await handlers['get-budget-bounds']();
+  const { start, end } = await mainApp['get-budget-bounds']();
   return monthUtils.range(start, end);
 };
 
@@ -429,7 +429,7 @@ handlers['api/budget-set-amount'] = withMutation(async function ({
   amount,
 }) {
   checkFileOpen();
-  return handlers['budget/budget-amount']({
+  return mainApp['budget/budget-amount']({
     month,
     category: categoryId,
     amount,
@@ -444,7 +444,7 @@ handlers['api/budget-set-carryover'] = withMutation(async function ({
   checkFileOpen();
   await validateMonth(month);
   await validateExpenseCategory('budget-set-carryover', categoryId);
-  return handlers['budget/set-carryover']({
+  return mainApp['budget/set-carryover']({
     startMonth: month,
     category: categoryId,
     flag,
@@ -460,7 +460,7 @@ handlers['api/budget-hold-for-next-month'] = withMutation(async function ({
   if (amount <= 0) {
     throw APIError('Amount to hold needs to be greater than 0');
   }
-  return handlers['budget/hold-for-next-month']({
+  return mainApp['budget/hold-for-next-month']({
     month,
     amount,
   });
@@ -469,7 +469,7 @@ handlers['api/budget-hold-for-next-month'] = withMutation(async function ({
 handlers['api/budget-reset-hold'] = withMutation(async function ({ month }) {
   checkFileOpen();
   await validateMonth(month);
-  return handlers['budget/reset-hold']({ month });
+  return mainApp['budget/reset-hold']({ month });
 });
 
 handlers['api/transactions-export'] = async function ({
@@ -479,7 +479,7 @@ handlers['api/transactions-export'] = async function ({
   accounts,
 }) {
   checkFileOpen();
-  return handlers['transactions-export']({
+  return mainApp['transactions-export']({
     transactions,
     categoryGroups,
     payees,
@@ -494,7 +494,7 @@ handlers['api/transactions-import'] = withMutation(async function ({
   opts,
 }) {
   checkFileOpen();
-  return handlers['transactions-import']({
+  return mainApp['transactions-import']({
     accountId,
     transactions,
     isPreview,
@@ -552,7 +552,7 @@ handlers['api/transaction-update'] = withMutation(async function ({
   }
 
   const { diff } = updateTransaction(transactions, { id, ...fields });
-  return handlers['transactions-batch-update'](diff)['updated'];
+  return mainApp['transactions-batch-update'](diff)['updated'];
 });
 
 handlers['api/transaction-delete'] = withMutation(async function ({ id }) {
@@ -567,12 +567,12 @@ handlers['api/transaction-delete'] = withMutation(async function ({ id }) {
   }
 
   const { diff } = deleteTransaction(transactions, id);
-  return handlers['transactions-batch-update'](diff)['deleted'];
+  return mainApp['transactions-batch-update'](diff)['deleted'];
 });
 
 handlers['api/accounts-get'] = async function () {
   checkFileOpen();
-  const accounts: AccountEntity[] = await handlers['accounts-get']();
+  const accounts: AccountEntity[] = await mainApp['accounts-get']();
   return accounts.map(account => accountModel.toExternal(account));
 };
 
@@ -581,7 +581,7 @@ handlers['api/account-create'] = withMutation(async function ({
   initialBalance = null,
 }) {
   checkFileOpen();
-  return handlers['account-create']({
+  return mainApp['account-create']({
     name: account.name,
     offBudget: account.offbudget,
     closed: account.closed,
@@ -593,7 +593,7 @@ handlers['api/account-create'] = withMutation(async function ({
 
 handlers['api/account-update'] = withMutation(async function ({ id, fields }) {
   checkFileOpen();
-  return db.updateAccount({ id, ...accountModel.fromExternal(fields) });
+  await mainApp['account-update']({ id, ...accountModel.fromExternal(fields) });
 });
 
 handlers['api/account-close'] = withMutation(async function ({
@@ -602,7 +602,7 @@ handlers['api/account-close'] = withMutation(async function ({
   transferCategoryId,
 }) {
   checkFileOpen();
-  return handlers['account-close']({
+  return mainApp['account-close']({
     id,
     transferAccountId,
     categoryId: transferCategoryId,
@@ -611,12 +611,12 @@ handlers['api/account-close'] = withMutation(async function ({
 
 handlers['api/account-reopen'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['account-reopen']({ id });
+  return mainApp['account-reopen']({ id });
 });
 
 handlers['api/account-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['account-close']({ id, forced: true });
+  return mainApp['account-close']({ id, forced: true });
 });
 
 handlers['api/account-balance'] = withMutation(async function ({
@@ -624,14 +624,14 @@ handlers['api/account-balance'] = withMutation(async function ({
   cutoff = new Date(),
 }) {
   checkFileOpen();
-  return handlers['account-balance']({ id, cutoff });
+  return mainApp['account-balance']({ id, cutoff });
 });
 
 handlers['api/categories-get'] = async function ({
   grouped,
 }: { grouped? } = {}) {
   checkFileOpen();
-  const result = await handlers['get-categories']();
+  const result = await mainApp['get-categories']();
   return grouped
     ? result.grouped.map(group => categoryGroupModel.toExternal(group))
     : result.list.map(category => categoryModel.toExternal(category));
@@ -639,7 +639,7 @@ handlers['api/categories-get'] = async function ({
 
 handlers['api/category-groups-get'] = async function () {
   checkFileOpen();
-  const groups = await handlers['get-category-groups']();
+  const groups = await mainApp['get-category-groups']();
   return groups.map(group => categoryGroupModel.toExternal(group));
 };
 
@@ -647,7 +647,7 @@ handlers['api/category-group-create'] = withMutation(async function ({
   group,
 }) {
   checkFileOpen();
-  return handlers['category-group-create']({
+  return mainApp['category-group-create']({
     name: group.name,
     hidden: group.hidden,
   });
@@ -658,7 +658,7 @@ handlers['api/category-group-update'] = withMutation(async function ({
   fields,
 }) {
   checkFileOpen();
-  return handlers['category-group-update']({
+  return mainApp['category-group-update']({
     id,
     ...categoryGroupModel.fromExternal(fields),
   });
@@ -669,7 +669,7 @@ handlers['api/category-group-delete'] = withMutation(async function ({
   transferCategoryId,
 }) {
   checkFileOpen();
-  return handlers['category-group-delete']({
+  return mainApp['category-group-delete']({
     id,
     transferId: transferCategoryId,
   });
@@ -677,7 +677,7 @@ handlers['api/category-group-delete'] = withMutation(async function ({
 
 handlers['api/category-create'] = withMutation(async function ({ category }) {
   checkFileOpen();
-  return handlers['category-create']({
+  return mainApp['category-create']({
     name: category.name,
     groupId: category.group_id,
     isIncome: category.is_income,
@@ -687,7 +687,7 @@ handlers['api/category-create'] = withMutation(async function ({ category }) {
 
 handlers['api/category-update'] = withMutation(async function ({ id, fields }) {
   checkFileOpen();
-  return handlers['category-update']({
+  return mainApp['category-update']({
     id,
     ...categoryModel.fromExternal(fields),
   });
@@ -698,7 +698,7 @@ handlers['api/category-delete'] = withMutation(async function ({
   transferCategoryId,
 }) {
   checkFileOpen();
-  return handlers['category-delete']({
+  return mainApp['category-delete']({
     id,
     transferId: transferCategoryId,
   });
@@ -706,31 +706,31 @@ handlers['api/category-delete'] = withMutation(async function ({
 
 handlers['api/common-payees-get'] = async function () {
   checkFileOpen();
-  const payees = await handlers['getCommonPayees']();
+  const payees = await mainApp.getCommonPayees();
   return payees.map(payee => payeeModel.toExternal(payee));
 };
 
 handlers['api/payees-get'] = async function () {
   checkFileOpen();
-  const payees = await handlers['getPayees']();
+  const payees = await mainApp.getPayees();
   return payees.map(payee => payeeModel.toExternal(payee));
 };
 
 handlers['api/payee-create'] = withMutation(async function ({ payee }) {
   checkFileOpen();
-  return handlers['createPayee']({ name: payee.name });
+  return mainApp.createPayee({ name: payee.name });
 });
 
 handlers['api/payee-update'] = withMutation(async function ({ id, fields }) {
   checkFileOpen();
-  return handlers['batchChangePayees']({
+  return mainApp.batchChangePayees({
     updated: [{ id, ...payeeModel.fromExternal(fields) }],
   });
 });
 
 handlers['api/payee-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['batchChangePayees']({ deleted: [{ id }] });
+  return mainApp.batchChangePayees({ deleted: [{ id }] });
 });
 
 handlers['api/payees-merge'] = withMutation(async function ({
@@ -738,18 +738,18 @@ handlers['api/payees-merge'] = withMutation(async function ({
   mergeIds,
 }) {
   checkFileOpen();
-  return handlers['mergePayees']({ targetId, mergeIds });
+  return mainApp.mergePayees({ targetId, mergeIds });
 });
 
 handlers['api/tags-get'] = async function () {
   checkFileOpen();
-  const tags = await handlers['tags-get']();
+  const tags = await mainApp['tags-get']();
   return tags.map(tag => tagModel.toExternal(tag));
 };
 
 handlers['api/tag-create'] = withMutation(async function ({ tag }) {
   checkFileOpen();
-  const result = await handlers['tags-create']({
+  const result = await mainApp['tags-create']({
     tag: tag.tag,
     color: tag.color,
     description: tag.description,
@@ -759,12 +759,12 @@ handlers['api/tag-create'] = withMutation(async function ({ tag }) {
 
 handlers['api/tag-update'] = withMutation(async function ({ id, fields }) {
   checkFileOpen();
-  await handlers['tags-update']({ id, ...tagModel.fromExternal(fields) });
+  await mainApp['tags-update']({ id, ...tagModel.fromExternal(fields) });
 });
 
 handlers['api/tag-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  await handlers['tags-delete']({ id });
+  await mainApp['tags-delete']({ id });
 });
 
 handlers['api/payee-location-create'] = withMutation(async function ({
@@ -773,17 +773,17 @@ handlers['api/payee-location-create'] = withMutation(async function ({
   longitude,
 }) {
   checkFileOpen();
-  return handlers['createPayeeLocation']({ payeeId, latitude, longitude });
+  return mainApp.createPayeeLocation({ payeeId, latitude, longitude });
 });
 
 handlers['api/payee-locations-get'] = async function ({ payeeId }) {
   checkFileOpen();
-  return handlers['getPayeeLocations']({ payeeId });
+  return mainApp.getPayeeLocations({ payeeId });
 };
 
 handlers['api/payee-location-delete'] = withMutation(async function ({ id }) {
   checkFileOpen();
-  return handlers['deletePayeeLocation']({ id });
+  return mainApp.deletePayeeLocation({ id });
 });
 
 handlers['api/payees-get-nearby'] = async function ({
@@ -792,22 +792,22 @@ handlers['api/payees-get-nearby'] = async function ({
   maxDistance,
 }) {
   checkFileOpen();
-  return handlers['getNearbyPayees']({ latitude, longitude, maxDistance });
+  return mainApp.getNearbyPayees({ latitude, longitude, maxDistance });
 };
 
 handlers['api/rules-get'] = async function () {
   checkFileOpen();
-  return handlers['rules-get']();
+  return mainApp['rules-get']();
 };
 
 handlers['api/payee-rules-get'] = async function ({ id }) {
   checkFileOpen();
-  return handlers['getPayeeRules']({ id });
+  return mainApp.getPayeeRules({ id });
 };
 
 handlers['api/rule-create'] = withMutation(async function ({ rule }) {
   checkFileOpen();
-  const addedRule = await handlers['rule-add'](rule);
+  const addedRule = await mainApp['rule-add'](rule);
 
   if ('error' in addedRule) {
     throw APIError('Failed creating a new rule', addedRule.error);
@@ -818,7 +818,7 @@ handlers['api/rule-create'] = withMutation(async function ({ rule }) {
 
 handlers['api/rule-update'] = withMutation(async function ({ rule }) {
   checkFileOpen();
-  const updatedRule = await handlers['rule-update'](rule);
+  const updatedRule = await mainApp['rule-update'](rule);
 
   if ('error' in updatedRule) {
     throw APIError('Failed updating the rule', updatedRule.error);
@@ -829,7 +829,7 @@ handlers['api/rule-update'] = withMutation(async function ({ rule }) {
 
 handlers['api/rule-delete'] = withMutation(async function (id) {
   checkFileOpen();
-  return handlers['rule-delete'](id);
+  return mainApp['rule-delete'](id);
 });
 
 handlers['api/schedules-get'] = async function () {
@@ -848,7 +848,7 @@ handlers['api/schedule-create'] = withMutation(async function (
     name: internalSchedule.name,
     posts_transaction: internalSchedule.posts_transaction,
   };
-  return handlers['schedule/create']({
+  return mainApp['schedule/create']({
     schedule: partialSchedule,
     conditions: internalSchedule._conditions,
   });
@@ -982,7 +982,7 @@ handlers['api/schedule-update'] = withMutation(async function ({
   }
 
   if (conditionsUpdated) {
-    return handlers['schedule/update']({
+    return mainApp['schedule/update']({
       schedule: {
         id: sched.id,
         posts_transaction: sched.posts_transaction,
@@ -998,7 +998,7 @@ handlers['api/schedule-update'] = withMutation(async function ({
 
 handlers['api/schedule-delete'] = withMutation(async function (id: string) {
   checkFileOpen();
-  return handlers['schedule/delete']({ id });
+  return mainApp['schedule/delete']({ id });
 });
 
 handlers['api/get-id-by-name'] = async function ({ type, name }) {
@@ -1021,7 +1021,7 @@ handlers['api/get-id-by-name'] = async function ({ type, name }) {
 
 handlers['api/get-server-version'] = async function () {
   checkFileOpen();
-  return handlers['get-server-version']();
+  return mainApp['get-server-version']();
 };
 
 export const app = createApp(handlers);

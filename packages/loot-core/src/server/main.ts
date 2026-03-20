@@ -8,6 +8,7 @@ import * as sqlite from '../platform/server/sqlite';
 import { q } from '../shared/query';
 import type { QueryState } from '../shared/query';
 import { amountToInteger, integerToAmount } from '../shared/util';
+import { type ApiHandlers } from '../types/api-handlers';
 import type { Handlers } from '../types/handlers';
 
 import { app as accountsApp } from './accounts/app';
@@ -155,7 +156,6 @@ mainApp.events.on('sync', event => {
 
 mainApp.combine(
   serverApp,
-  apiApp,
   authApp,
   schedulesApp,
   budgetApp,
@@ -337,6 +337,9 @@ export async function init(config: InitConfig) {
 
 // Export a few things required for the platform
 
+const combinedApp = createApp<ApiHandlers & Handlers>();
+combinedApp.combine(apiApp, mainApp);
+
 export const lib = {
   getDataDir: fs.getDataDir,
   sendMessage: (msg, args) => connection.send(msg, args),
@@ -344,10 +347,10 @@ export const lib = {
     name: K,
     args?: Parameters<Handlers[K]>[0],
   ): Promise<Awaited<ReturnType<Handlers[K]>>> => {
-    const res = await mainApp.runHandler(name, args);
+    const res = await combinedApp.runHandler(name, args);
     return res as Awaited<ReturnType<Handlers[K]>>;
   },
-  on: (name, func) => mainApp.events.on(name, func),
+  on: (name, func) => combinedApp.events.on(name, func),
   q,
   db,
   amountToInteger,

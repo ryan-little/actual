@@ -19,10 +19,7 @@ import type { TagsHandlers } from '../server/tags/app';
 import type { ToolsHandlers } from '../server/tools/app';
 import type { TransactionHandlers } from '../server/transactions/app';
 
-import type { ApiHandlers } from './api-handlers';
-
 export type Handlers = {} & ServerHandlers &
-  ApiHandlers &
   BudgetHandlers &
   DashboardHandlers &
   FiltersHandlers &
