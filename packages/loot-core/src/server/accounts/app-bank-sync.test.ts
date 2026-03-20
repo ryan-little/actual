@@ -10,7 +10,7 @@ vi.mock('./sync', async () => ({
   syncAccount: vi.fn(),
 }));
 
-const simpleFinBatchSyncHandler = app.handlers['simplefin-batch-sync'];
+const simpleFinBatchSyncHandler = app['simplefin-batch-sync'];
 
 function insertBank(bank: { id: string; bank_id: string; name: string }) {
   db.runQuery(

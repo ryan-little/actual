@@ -1,32 +1,39 @@
-import { getBankSyncError } from '../shared/errors';
-
+// @ts-strict-ignore
 import { app as apiApp } from './api';
+import { mainApp } from './main';
 
-vi.mock('../shared/errors', () => ({
-  getBankSyncError: vi.fn(error => `Bank sync error: ${error}`),
-}));
-
-describe('API handlers', () => {
+describe('API app', () => {
   describe('api/bank-sync', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
     it('should sync a single account when accountId is provided', async () => {
-      apiApp['accounts-bank-sync'] = vi.fn().mockResolvedValue({ errors: [] });
+      vi.spyOn(mainApp, 'runHandler').mockImplementation(
+        async (name: string) => {
+          if (name === 'accounts-bank-sync') return { errors: [] };
+          throw new Error(`Unexpected handler: ${name}`);
+        },
+      );
 
       await apiApp['api/bank-sync']({ accountId: 'account1' });
-      expect(apiApp['accounts-bank-sync']).toHaveBeenCalledWith({
+      expect(mainApp.runHandler).toHaveBeenCalledWith('accounts-bank-sync', {
         ids: ['account1'],
       });
     });
 
-    it('should handle errors in non batch sync', async () => {
-      apiApp['accounts-bank-sync'] = vi.fn().mockResolvedValue({
-        errors: ['connection-failed'],
-      });
+    it('should throw an error when bank sync fails', async () => {
+      vi.spyOn(mainApp, 'runHandler').mockImplementation(
+        async (name: string) => {
+          if (name === 'accounts-bank-sync')
+            return { errors: [{ message: 'connection-failed' }] };
+          throw new Error(`Unexpected handler: ${name}`);
+        },
+      );
 
       await expect(
         apiApp['api/bank-sync']({ accountId: 'account2' }),
-      ).rejects.toThrow('Bank sync error: connection-failed');
-
-      expect(getBankSyncError).toHaveBeenCalledWith('connection-failed');
+      ).rejects.toThrow('connection-failed');
     });
   });
 });

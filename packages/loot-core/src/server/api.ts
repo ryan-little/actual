@@ -263,7 +263,7 @@ handlers['api/bank-sync'] = async function (args) {
   const allErrors = [];
 
   if (!batchSync) {
-    const { errors } = await mainApp['bank-sync']({
+    const { errors } = await mainApp['accounts-bank-sync']({
       ids: [args.accountId],
     });
 
