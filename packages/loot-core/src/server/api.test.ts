@@ -17,16 +17,20 @@ describe('API app', () => {
       );
 
       await apiApp['api/bank-sync']({ accountId: 'account1' });
-      expect(mainApp.runHandler).toHaveBeenCalledWith('accounts-bank-sync', {
-        ids: ['account1'],
-      });
+      expect(mainApp.runHandler.bind(mainApp)).toHaveBeenCalledWith(
+        'accounts-bank-sync',
+        {
+          ids: ['account1'],
+        },
+      );
     });
 
     it('should throw an error when bank sync fails', async () => {
       vi.spyOn(mainApp, 'runHandler').mockImplementation(
         async (name: string) => {
-          if (name === 'accounts-bank-sync')
+          if (name === 'accounts-bank-sync') {
             return { errors: [{ message: 'connection-failed' }] };
+          }
           throw new Error(`Unexpected handler: ${name}`);
         },
       );
