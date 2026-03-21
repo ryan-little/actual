@@ -126,16 +126,6 @@ export default defineConfig(async ({ mode }) => {
     '.json',
   ];
 
-  if (env.IS_GENERIC_BROWSER) {
-    resolveExtensions = [
-      '.browser.js',
-      '.browser.jsx',
-      '.browser.ts',
-      '.browser.tsx',
-      ...resolveExtensions,
-    ];
-  }
-
   const browserOpen = env.BROWSER_OPEN ? `//${env.BROWSER_OPEN}` : true;
 
   return {
