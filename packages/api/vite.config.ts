@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 import { visualizer } from 'rollup-plugin-visualizer';
-import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
 import peggyLoader from 'vite-plugin-peggy-loader';
+import { defineConfig } from 'vitest/config';
 
 const lootCoreRoot = path.resolve(__dirname, '../loot-core');
 const distDir = path.resolve(__dirname, 'dist');
@@ -84,6 +84,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    setupFiles: ['./test/setup.node.ts'],
+    include: ['test/**/*.test.ts'],
     onConsoleLog(log: string, type: 'stdout' | 'stderr'): boolean | void {
       // print only console.error
       return type === 'stderr';

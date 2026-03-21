@@ -1,66 +1,7 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-
-import { vi } from 'vitest';
-
 import type { RuleEntity } from '@actual-app/core/types/models';
 
-import * as api from './index';
-
-// In tests we run from source; loot-core's API fs uses __dirname (for the built dist/).
-// Mock the fs so path constants point at loot-core package root where migrations live.
-vi.mock(
-  '../loot-core/src/platform/server/fs/index.api',
-  async importOriginal => {
-    const actual = (await importOriginal()) as Record<string, unknown>;
-    const pathMod = await import('path');
-    const lootCoreRoot = pathMod.join(__dirname, '..', 'loot-core');
-    return {
-      ...actual,
-      migrationsPath: pathMod.join(lootCoreRoot, 'migrations'),
-      bundledDatabasePath: pathMod.join(lootCoreRoot, 'default-db.sqlite'),
-      demoBudgetPath: pathMod.join(lootCoreRoot, 'demo-budget'),
-    };
-  },
-);
-
-const budgetName = 'test-budget';
-
-global.IS_TESTING = true;
-
-beforeEach(async () => {
-  const budgetPath = path.join(__dirname, '/mocks/budgets/', budgetName);
-  await fs.rm(budgetPath, { force: true, recursive: true });
-
-  await createTestBudget('default-budget-template', budgetName);
-  await api.init({
-    dataDir: path.join(__dirname, '/mocks/budgets/'),
-  });
-});
-
-afterEach(async () => {
-  global.currentMonth = null;
-  await api.shutdown();
-});
-
-async function createTestBudget(templateName: string, name: string) {
-  const templatePath = path.join(
-    __dirname,
-    '/../loot-core/src/mocks/files',
-    templateName,
-  );
-  const budgetPath = path.join(__dirname, '/mocks/budgets/', name);
-
-  await fs.mkdir(budgetPath);
-  await fs.copyFile(
-    path.join(templatePath, 'metadata.json'),
-    path.join(budgetPath, 'metadata.json'),
-  );
-  await fs.copyFile(
-    path.join(templatePath, 'db.sqlite'),
-    path.join(budgetPath, 'db.sqlite'),
-  );
-}
+const api = globalThis.__test_api;
+const budgetName = globalThis.__test_budget_name;
 
 describe('API setup and teardown', () => {
   // apis: loadBudget, getBudgetMonths
@@ -93,7 +34,7 @@ describe('API CRUD operations', () => {
   // apis: getCategoryGroups, createCategoryGroup, updateCategoryGroup, deleteCategoryGroup
   test('CategoryGroups: successfully update category groups', async () => {
     const month = '2023-10';
-    global.currentMonth = month;
+    globalThis.currentMonth = month;
 
     // get existing category groups
     const groups = await api.getCategoryGroups();
@@ -164,7 +105,7 @@ describe('API CRUD operations', () => {
   // apis: createCategory, getCategories, updateCategory, deleteCategory
   test('Categories: successfully update categories', async () => {
     const month = '2023-10';
-    global.currentMonth = month;
+    globalThis.currentMonth = month;
 
     // create our test category group
     const mainGroupId = await api.createCategoryGroup({
@@ -246,7 +187,7 @@ describe('API CRUD operations', () => {
   // apis: setBudgetAmount, setBudgetCarryover, getBudgetMonth
   test('Budgets: successfully update budgets', async () => {
     const month = '2023-10';
-    global.currentMonth = month;
+    globalThis.currentMonth = month;
 
     // create some new categories to test with
     const groupId = await api.createCategoryGroup({

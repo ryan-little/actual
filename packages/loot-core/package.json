@@ -55,6 +55,7 @@
     "./platform/server/connection": "./src/platform/server/connection/index.ts",
     "./platform/server/fetch": "./src/platform/server/fetch/index.ts",
     "./platform/server/fs": "./src/platform/server/fs/index.ts",
+    "./platform/server/indexeddb": "./src/platform/server/indexeddb/index.ts",
     "./platform/server/log": "./src/platform/server/log/index.ts",
     "./platform/server/sqlite": "./src/platform/server/sqlite/index.ts",
     "./server/budget/types/*": "./src/server/budget/types/*.d.ts",

@@ -29,6 +29,7 @@ __metadata:
     better-sqlite3: "npm:^12.6.2"
     compare-versions: "npm:^6.1.1"
     node-fetch: "npm:^3.3.2"
+    npm-run-all: "npm:^4.1.5"
     rollup-plugin-visualizer: "npm:^6.0.11"
     typescript-strict-plugin: "npm:^2.4.4"
     uuid: "npm:^13.0.0"

@@ -38,10 +38,12 @@
     }
   },
   "scripts": {
-    "build": "yarn build:node && yarn build:browser",
+    "build": "npm-run-all -cp 'build:*'",
     "build:node": "vite build",
     "build:browser": "vite build --config vite.browser.config.ts",
-    "test": "vitest --run",
+    "test": "npm-run-all -cp 'test:*'",
+    "test:node": "vitest --run",
+    "test:browser": "vitest --run -c vite.browser.config.ts",
     "typecheck": "tsgo -b && tsc-strict"
   },
   "dependencies": {
@@ -54,6 +56,8 @@
   },
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260309.1",
+    "fake-indexeddb": "^6.0.0",
+    "npm-run-all": "^4.1.5",
     "rollup-plugin-visualizer": "^6.0.11",
     "typescript-strict-plugin": "^2.4.4",
     "vite": "^8.0.0",
