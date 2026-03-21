@@ -1,0 +1,24 @@
+{
+  "name": "@actual-app/mobile",
+  "version": "26.3.0",
+  "private": true,
+  "description": "Actual Budget iOS app powered by Capacitor",
+  "license": "MIT",
+  "scripts": {
+    "build": "yarn workspace @actual-app/web build && npx cap sync ios",
+    "sync": "npx cap sync ios",
+    "open": "npx cap open ios",
+    "run:ios": "npx cap run ios"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/keyboard": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  }
+}

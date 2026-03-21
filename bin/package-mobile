@@ -1,0 +1,23 @@
+#!/bin/bash -e
+
+ROOT=`dirname $0`
+
+cd "$ROOT/.."
+
+echo "Building web assets for mobile..."
+
+# Build the browser version (same assets used by the Capacitor wrapper)
+./bin/package-browser
+
+echo "Syncing Capacitor iOS project..."
+cd packages/mobile
+npx cap sync ios
+
+echo ""
+echo "iOS project ready at: packages/mobile/ios/App/App.xcworkspace"
+echo ""
+echo "To build for the App Store:"
+echo "  1. Open the project: yarn mobile:open"
+echo "  2. Select your signing team in Xcode"
+echo "  3. Archive: Product > Archive"
+echo "  4. Distribute via App Store Connect"

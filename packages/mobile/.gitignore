@@ -1,0 +1,7 @@
+# iOS build artifacts
+ios/App/Pods/
+ios/App/DerivedData/
+ios/App/build/
+
+# Node modules are at root level
+node_modules/
