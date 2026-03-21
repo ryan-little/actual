@@ -12,6 +12,7 @@
   "types": "@types/index.d.ts",
   "exports": {
     ".": {
+      "development": "./index.ts",
       "browser": {
         "types": "./@types/index.d.ts",
         "default": "./dist/browser.js"
@@ -19,6 +20,20 @@
       "default": {
         "types": "./@types/index.d.ts",
         "default": "./dist/index.js"
+      }
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "browser": {
+          "types": "./@types/index.d.ts",
+          "default": "./dist/browser.js"
+        },
+        "default": {
+          "types": "./@types/index.d.ts",
+          "default": "./dist/index.js"
+        }
       }
     }
   },
@@ -39,7 +54,7 @@
   },
   "devDependencies": {
     "@typescript/native-preview": "^7.0.0-dev.20260309.1",
-    "rollup-plugin-visualizer": "^6.0.5",
+    "rollup-plugin-visualizer": "^6.0.11",
     "typescript-strict-plugin": "^2.4.4",
     "vite": "^8.0.0",
     "vite-plugin-dts": "^4.5.4",
