@@ -3,7 +3,11 @@ import { Command } from 'commander';
 
 import { printOutput } from '../output';
 
-import { parseOrderBy, registerQueryCommand } from './query';
+import {
+  expandSelectAliases,
+  parseOrderBy,
+  registerQueryCommand,
+} from './query';
 
 vi.mock('@actual-app/api', () => {
   const queryObj = {
@@ -342,5 +346,87 @@ describe('query commands', () => {
         'Unknown table "unknown"',
       );
     });
+
+    it('includes descriptions in field output', async () => {
+      await run(['query', 'fields', 'transactions']);
+
+      const output = vi.mocked(printOutput).mock.calls[0][0] as Array<{
+        name: string;
+        type: string;
+        description?: string;
+      }>;
+      const amountField = output.find(f => f.name === 'amount');
+      expect(amountField?.description).toContain('cents');
+    });
+  });
+
+  describe('describe subcommand', () => {
+    it('outputs schema for all tables', async () => {
+      await run(['query', 'describe']);
+
+      const output = vi.mocked(printOutput).mock.calls[0][0] as Record<
+        string,
+        unknown[]
+      >;
+      expect(output).toHaveProperty('transactions');
+      expect(output).toHaveProperty('accounts');
+      expect(output).toHaveProperty('categories');
+      expect(output).toHaveProperty('payees');
+      expect(output).toHaveProperty('rules');
+      expect(output).toHaveProperty('schedules');
+    });
+  });
+
+  describe('--exclude-transfers flag', () => {
+    it('adds transfer_id null filter for transactions', async () => {
+      await run([
+        'query',
+        'run',
+        '--table',
+        'transactions',
+        '--exclude-transfers',
+      ]);
+
+      const qObj = getQueryObj();
+      expect(qObj.filter).toHaveBeenCalledWith({ transfer_id: { $eq: null } });
+    });
+
+    it('errors when used with non-transactions table', async () => {
+      await expect(
+        run(['query', 'run', '--table', 'accounts', '--exclude-transfers']),
+      ).rejects.toThrow(
+        '--exclude-transfers can only be used with --table transactions',
+      );
+    });
+  });
+});
+
+describe('expandSelectAliases', () => {
+  it('expands transaction aliases', () => {
+    expect(
+      expandSelectAliases('transactions', [
+        'date',
+        'payee',
+        'category',
+        'amount',
+      ]),
+    ).toEqual(['date', 'payee.name', 'category.name', 'amount']);
+  });
+
+  it('expands account alias', () => {
+    expect(expandSelectAliases('transactions', ['account'])).toEqual([
+      'account.name',
+    ]);
+  });
+
+  it('passes through unknown fields unchanged', () => {
+    expect(expandSelectAliases('transactions', ['notes'])).toEqual(['notes']);
+  });
+
+  it('returns fields unchanged for tables without aliases', () => {
+    expect(expandSelectAliases('rules', ['id', 'stage'])).toEqual([
+      'id',
+      'stage',
+    ]);
   });
 });

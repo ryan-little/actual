@@ -60,6 +60,22 @@ describe('formatOutput', () => {
       expect(result).toContain('a');
       expect(result).toContain('b');
     });
+
+    it('flattens nested objects instead of showing [object Object]', () => {
+      const data = [{ payee: { id: 'p1', name: 'Grocery' } }];
+      const result = formatOutput(data, 'table');
+      expect(result).toContain('Grocery');
+      expect(result).not.toContain('[object Object]');
+    });
+
+    it('flattens nested objects in key-value table', () => {
+      const result = formatOutput(
+        { payee: { id: 'p1', name: 'Grocery' } },
+        'table',
+      );
+      expect(result).toContain('Grocery');
+      expect(result).not.toContain('[object Object]');
+    });
   });
 
   describe('csv', () => {
@@ -111,6 +127,24 @@ describe('formatOutput', () => {
       const result = formatOutput(data, 'csv');
       const lines = result.split('\n');
       expect(lines[0]).toBe('a,b');
+    });
+
+    it('flattens nested objects instead of showing [object Object]', () => {
+      const data = [{ payee: { id: 'p1', name: 'Grocery' } }];
+      const result = formatOutput(data, 'csv');
+      const lines = result.split('\n');
+      expect(lines[0]).toBe('payee');
+      expect(lines[1]).toContain('Grocery');
+      expect(lines[1]).not.toContain('[object Object]');
+    });
+
+    it('flattens nested objects in single-object csv', () => {
+      const result = formatOutput(
+        { payee: { id: 'p1', name: 'Grocery' } },
+        'csv',
+      );
+      expect(result).toContain('Grocery');
+      expect(result).not.toContain('[object Object]');
     });
   });
 });

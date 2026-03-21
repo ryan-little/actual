@@ -1,4 +1,56 @@
-import { parseBoolFlag, parseIntFlag } from './utils';
+import {
+  CliError,
+  defaultDateRange,
+  parseBoolFlag,
+  parseIntFlag,
+} from './utils';
+
+describe('CliError', () => {
+  it('stores message and suggestion', () => {
+    const err = new CliError('something failed', 'try this instead');
+    expect(err.message).toBe('something failed');
+    expect(err.suggestion).toBe('try this instead');
+    expect(err).toBeInstanceOf(Error);
+  });
+
+  it('works without suggestion', () => {
+    const err = new CliError('something failed');
+    expect(err.message).toBe('something failed');
+    expect(err.suggestion).toBeUndefined();
+  });
+});
+
+describe('defaultDateRange', () => {
+  it('returns both dates when both provided', () => {
+    expect(defaultDateRange('2025-01-01', '2025-01-31')).toEqual({
+      start: '2025-01-01',
+      end: '2025-01-31',
+    });
+  });
+
+  it('defaults start to 30 days before end', () => {
+    expect(defaultDateRange(undefined, '2025-02-28')).toEqual({
+      start: '2025-01-29',
+      end: '2025-02-28',
+    });
+  });
+
+  it('defaults end to today when only start provided', () => {
+    const result = defaultDateRange('2025-01-01');
+    expect(result.start).toBe('2025-01-01');
+    expect(result.end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('defaults both to last 30 days when neither provided', () => {
+    const result = defaultDateRange();
+    expect(result.start).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(result.end).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const startDate = new Date(result.start);
+    const endDate = new Date(result.end);
+    const diffDays = (endDate.getTime() - startDate.getTime()) / 86400000;
+    expect(diffDays).toBe(30);
+  });
+});
 
 describe('parseBoolFlag', () => {
   it('parses "true"', () => {

@@ -11,6 +11,7 @@ import { registerSchedulesCommand } from './commands/schedules';
 import { registerServerCommand } from './commands/server';
 import { registerTagsCommand } from './commands/tags';
 import { registerTransactionsCommand } from './commands/transactions';
+import { CliError } from './utils';
 
 declare const __CLI_VERSION__: string;
 
@@ -66,5 +67,8 @@ function normalizeThrownMessage(err: unknown): string {
 program.parseAsync(process.argv).catch((err: unknown) => {
   const message = normalizeThrownMessage(err);
   process.stderr.write(`Error: ${message}\n`);
+  if (err instanceof CliError && err.suggestion) {
+    process.stderr.write(`Suggestion: ${err.suggestion}\n`);
+  }
   process.exitCode = 1;
 });

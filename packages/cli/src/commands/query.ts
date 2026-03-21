@@ -4,7 +4,7 @@ import type { Command } from 'commander';
 import { withConnection } from '../connection';
 import { readJsonInput } from '../input';
 import { printOutput } from '../output';
-import { parseIntFlag } from '../utils';
+import { CliError, parseIntFlag } from '../utils';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -43,70 +43,165 @@ export function parseOrderBy(
 }
 
 // TODO: Import schema from API once it exposes table/field metadata
-const TABLE_SCHEMA: Record<
-  string,
-  Record<string, { type: string; ref?: string }>
-> = {
+type FieldInfo = { type: string; ref?: string; description?: string };
+
+const TABLE_SCHEMA: Record<string, Record<string, FieldInfo>> = {
   transactions: {
-    id: { type: 'id' },
-    account: { type: 'id', ref: 'accounts' },
-    date: { type: 'date' },
-    amount: { type: 'integer' },
-    payee: { type: 'id', ref: 'payees' },
-    category: { type: 'id', ref: 'categories' },
-    notes: { type: 'string' },
-    imported_id: { type: 'string' },
-    transfer_id: { type: 'id' },
-    cleared: { type: 'boolean' },
-    reconciled: { type: 'boolean' },
-    starting_balance_flag: { type: 'boolean' },
-    imported_payee: { type: 'string' },
-    is_parent: { type: 'boolean' },
-    is_child: { type: 'boolean' },
-    parent_id: { type: 'id' },
-    sort_order: { type: 'float' },
-    schedule: { type: 'id', ref: 'schedules' },
-    'account.name': { type: 'string', ref: 'accounts' },
-    'payee.name': { type: 'string', ref: 'payees' },
-    'category.name': { type: 'string', ref: 'categories' },
-    'category.group.name': { type: 'string', ref: 'category_groups' },
+    id: { type: 'id', description: 'Unique transaction identifier' },
+    account: { type: 'id', ref: 'accounts', description: 'Account ID' },
+    date: { type: 'date', description: 'Transaction date (YYYY-MM-DD)' },
+    amount: {
+      type: 'integer',
+      description:
+        'Amount in cents (e.g. 1000 = $10.00). Negative = expense, positive = income',
+    },
+    payee: { type: 'id', ref: 'payees', description: 'Payee ID' },
+    category: { type: 'id', ref: 'categories', description: 'Category ID' },
+    notes: { type: 'string', description: 'Transaction notes/memo' },
+    imported_id: {
+      type: 'string',
+      description: 'External ID from bank import',
+    },
+    transfer_id: {
+      type: 'id',
+      description:
+        'Linked transaction ID for transfers. Non-null means this is a transfer between own accounts',
+    },
+    cleared: { type: 'boolean', description: 'Whether transaction is cleared' },
+    reconciled: {
+      type: 'boolean',
+      description: 'Whether transaction is reconciled',
+    },
+    starting_balance_flag: {
+      type: 'boolean',
+      description: 'True for the starting balance transaction',
+    },
+    imported_payee: {
+      type: 'string',
+      description: 'Original payee name from bank import',
+    },
+    is_parent: {
+      type: 'boolean',
+      description: 'True if this is a split parent transaction',
+    },
+    is_child: {
+      type: 'boolean',
+      description: 'True if this is a split child transaction',
+    },
+    parent_id: {
+      type: 'id',
+      description: 'Parent transaction ID for split children',
+    },
+    sort_order: { type: 'float', description: 'Sort order within a day' },
+    schedule: {
+      type: 'id',
+      ref: 'schedules',
+      description: 'Linked schedule ID',
+    },
+    'account.name': {
+      type: 'string',
+      ref: 'accounts',
+      description: 'Resolved account name',
+    },
+    'payee.name': {
+      type: 'string',
+      ref: 'payees',
+      description: 'Resolved payee name',
+    },
+    'category.name': {
+      type: 'string',
+      ref: 'categories',
+      description: 'Resolved category name',
+    },
+    'category.group.name': {
+      type: 'string',
+      ref: 'category_groups',
+      description: 'Resolved category group name',
+    },
   },
   accounts: {
-    id: { type: 'id' },
-    name: { type: 'string' },
-    offbudget: { type: 'boolean' },
-    closed: { type: 'boolean' },
-    sort_order: { type: 'float' },
+    id: { type: 'id', description: 'Unique account identifier' },
+    name: { type: 'string', description: 'Account name' },
+    offbudget: {
+      type: 'boolean',
+      description: 'True if account is off-budget (tracking)',
+    },
+    closed: { type: 'boolean', description: 'True if account is closed' },
+    sort_order: { type: 'float', description: 'Display sort order' },
   },
   categories: {
-    id: { type: 'id' },
-    name: { type: 'string' },
-    is_income: { type: 'boolean' },
-    group_id: { type: 'id', ref: 'category_groups' },
-    sort_order: { type: 'float' },
-    hidden: { type: 'boolean' },
-    'group.name': { type: 'string', ref: 'category_groups' },
+    id: { type: 'id', description: 'Unique category identifier' },
+    name: { type: 'string', description: 'Category name' },
+    is_income: { type: 'boolean', description: 'True for income categories' },
+    group_id: {
+      type: 'id',
+      ref: 'category_groups',
+      description: 'Category group ID',
+    },
+    sort_order: { type: 'float', description: 'Display sort order' },
+    hidden: { type: 'boolean', description: 'True if category is hidden' },
+    'group.name': {
+      type: 'string',
+      ref: 'category_groups',
+      description: 'Resolved category group name',
+    },
   },
   payees: {
-    id: { type: 'id' },
-    name: { type: 'string' },
-    transfer_acct: { type: 'id', ref: 'accounts' },
+    id: { type: 'id', description: 'Unique payee identifier' },
+    name: { type: 'string', description: 'Payee name' },
+    transfer_acct: {
+      type: 'id',
+      ref: 'accounts',
+      description:
+        'Linked account ID for transfer payees. Non-null means this payee represents a transfer to/from this account',
+    },
   },
   rules: {
-    id: { type: 'id' },
-    stage: { type: 'string' },
-    conditions_op: { type: 'string' },
-    conditions: { type: 'json' },
-    actions: { type: 'json' },
+    id: { type: 'id', description: 'Unique rule identifier' },
+    stage: { type: 'string', description: 'Rule stage (pre, post, null)' },
+    conditions_op: {
+      type: 'string',
+      description: 'How conditions combine: "and" or "or"',
+    },
+    conditions: { type: 'json', description: 'Rule conditions as JSON array' },
+    actions: { type: 'json', description: 'Rule actions as JSON array' },
   },
   schedules: {
-    id: { type: 'id' },
-    name: { type: 'string' },
-    rule: { type: 'id', ref: 'rules' },
-    next_date: { type: 'date' },
-    completed: { type: 'boolean' },
+    id: { type: 'id', description: 'Unique schedule identifier' },
+    name: { type: 'string', description: 'Schedule name' },
+    rule: {
+      type: 'id',
+      ref: 'rules',
+      description: 'Associated rule ID',
+    },
+    next_date: {
+      type: 'date',
+      description: 'Next occurrence date (YYYY-MM-DD)',
+    },
+    completed: {
+      type: 'boolean',
+      description: 'True if schedule is completed',
+    },
   },
 };
+
+const FIELD_ALIASES: Record<string, Record<string, string>> = {
+  transactions: {
+    payee: 'payee.name',
+    category: 'category.name',
+    account: 'account.name',
+    group: 'category.group.name',
+  },
+  categories: {
+    group: 'group.name',
+  },
+};
+
+export function expandSelectAliases(table: string, fields: string[]): string[] {
+  const aliases = FIELD_ALIASES[table];
+  if (!aliases) return fields;
+  return fields.map(f => aliases[f.trim()] ?? f);
+}
 
 const AVAILABLE_TABLES = Object.keys(TABLE_SCHEMA).join(', ');
 
@@ -163,7 +258,10 @@ function buildQueryFromFlags(cmdOpts: Record<string, string | undefined>) {
   const table =
     cmdOpts.table ?? (last !== undefined ? 'transactions' : undefined);
   if (!table) {
-    throw new Error('--table is required (or use --file or --last)');
+    throw new CliError(
+      '--table is required (or use --file or --last)',
+      'Run "actual query tables" to see available tables, or use --last <n> for recent transactions.',
+    );
   }
 
   if (!(table in TABLE_SCHEMA)) {
@@ -180,19 +278,38 @@ function buildQueryFromFlags(cmdOpts: Record<string, string | undefined>) {
     throw new Error('--count and --select are mutually exclusive');
   }
 
+  if (cmdOpts.excludeTransfers && table !== 'transactions') {
+    throw new Error(
+      '--exclude-transfers can only be used with --table transactions',
+    );
+  }
+
   let queryObj = api.q(table);
 
   if (cmdOpts.count) {
     queryObj = queryObj.calculate({ $count: '*' });
   } else if (cmdOpts.select) {
-    queryObj = queryObj.select(cmdOpts.select.split(','));
+    queryObj = queryObj.select(
+      expandSelectAliases(table, cmdOpts.select.split(',')),
+    );
   } else if (last !== undefined) {
     queryObj = queryObj.select(LAST_DEFAULT_SELECT);
   }
 
   const filterStr = cmdOpts.filter ?? cmdOpts.where;
   if (filterStr) {
-    queryObj = queryObj.filter(JSON.parse(filterStr));
+    try {
+      queryObj = queryObj.filter(JSON.parse(filterStr));
+    } catch {
+      throw new CliError(
+        'Invalid JSON in --filter.',
+        `Ensure valid JSON. Example: --filter '{"amount":{"$lt":0}}'`,
+      );
+    }
+  }
+
+  if (cmdOpts.excludeTransfers) {
+    queryObj = queryObj.filter({ transfer_id: { $eq: null } });
   }
 
   const orderByStr =
@@ -249,8 +366,15 @@ Examples:
   # Pipe query from stdin
   echo '{"table":"transactions","limit":5}' | actual query run --file -
 
+  # Exclude transfers from results
+  actual query run --table transactions --exclude-transfers --last 10
+
+  # Use shorthand aliases (payee = payee.name, category = category.name)
+  actual query run --table transactions --select "date,payee,category,amount" --last 10
+
 Available tables: ${AVAILABLE_TABLES}
 Use "actual query tables" and "actual query fields <table>" for schema info.
+Use "actual query describe" for full schema with all tables, fields, and descriptions.
 
 Common filter operators: $eq, $ne, $lt, $lte, $gt, $gte, $like, $and, $or
 See ActualQL docs for full reference: https://actualbudget.org/docs/api/actual-ql/`;
@@ -291,6 +415,11 @@ export function registerQueryCommand(program: Command) {
     .option(
       '--file <path>',
       'Read full query object from JSON file (use - for stdin)',
+    )
+    .option(
+      '--exclude-transfers',
+      'Exclude transfer transactions (only for --table transactions)',
+      false,
     )
     .addHelpText('after', RUN_EXAMPLES)
     .action(async cmdOpts => {
@@ -338,7 +467,27 @@ export function registerQueryCommand(program: Command) {
         name,
         type: info.type,
         ...(info.ref ? { ref: info.ref } : {}),
+        ...(info.description ? { description: info.description } : {}),
       }));
       printOutput(fields, opts.format);
+    });
+
+  query
+    .command('describe')
+    .description(
+      'Output full schema for all tables (fields, types, relationships, descriptions)',
+    )
+    .action(() => {
+      const opts = program.opts();
+      const schema: Record<string, unknown[]> = {};
+      for (const [table, fields] of Object.entries(TABLE_SCHEMA)) {
+        schema[table] = Object.entries(fields).map(([name, info]) => ({
+          name,
+          type: info.type,
+          ...(info.ref ? { ref: info.ref } : {}),
+          ...(info.description ? { description: info.description } : {}),
+        }));
+      }
+      printOutput(schema, opts.format);
     });
 }

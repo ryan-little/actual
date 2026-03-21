@@ -4,6 +4,7 @@ import type { Command } from 'commander';
 import { withConnection } from '../connection';
 import { readJsonInput } from '../input';
 import { printOutput } from '../output';
+import { defaultDateRange } from '../utils';
 
 export function registerTransactionsCommand(program: Command) {
   const transactions = program
@@ -14,17 +15,32 @@ export function registerTransactionsCommand(program: Command) {
     .command('list')
     .description('List transactions for an account')
     .requiredOption('--account <id>', 'Account ID')
-    .requiredOption('--start <date>', 'Start date (YYYY-MM-DD)')
-    .requiredOption('--end <date>', 'End date (YYYY-MM-DD)')
+    .option(
+      '--start <date>',
+      'Start date (YYYY-MM-DD, defaults to 30 days ago)',
+    )
+    .option('--end <date>', 'End date (YYYY-MM-DD, defaults to today)')
+    .option('--exclude-transfers', 'Exclude transfer transactions', false)
     .action(async cmdOpts => {
       const opts = program.opts();
       await withConnection(opts, async () => {
-        const result = await api.getTransactions(
-          cmdOpts.account,
-          cmdOpts.start,
-          cmdOpts.end,
-        );
-        printOutput(result, opts.format);
+        const { start, end } = defaultDateRange(cmdOpts.start, cmdOpts.end);
+
+        const filter: Record<string, unknown> = {
+          account: cmdOpts.account,
+          date: { $gte: start, $lte: end },
+        };
+        if (cmdOpts.excludeTransfers) {
+          filter.transfer_id = { $eq: null };
+        }
+
+        const queryObj = api
+          .q('transactions')
+          .select(['*', 'account.name', 'payee.name', 'category.name'])
+          .filter(filter)
+          .orderBy([{ date: 'desc' }]);
+        const result = await api.aqlQuery(queryObj);
+        printOutput(result.data, opts.format);
       });
     });
 
