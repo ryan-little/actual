@@ -116,7 +116,7 @@ export default defineConfig(async ({ mode }) => {
     process.env.REACT_APP_BRANCH = process.env.BRANCH;
   }
 
-  let resolveExtensions = [
+  const resolveExtensions = [
     '.mjs',
     '.js',
     '.mts',
