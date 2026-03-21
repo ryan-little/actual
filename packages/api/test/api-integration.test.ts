@@ -1,5 +1,12 @@
 import type { RuleEntity } from '@actual-app/core/types/models';
 
+if (!globalThis.__test_api) {
+  throw new Error(
+    'Test setup did not run — __test_api is not defined. ' +
+      'Ensure a setupFile (setup.node.ts or setup.browser.ts) is configured.',
+  );
+}
+
 const api = globalThis.__test_api;
 const budgetName = globalThis.__test_budget_name;
 
