@@ -8,6 +8,7 @@ import { AnimatedLoading } from '@actual-app/components/icons/AnimatedLoading';
 import { baseInputStyle } from '@actual-app/components/input';
 import { SpaceBetween } from '@actual-app/components/space-between';
 import { Text } from '@actual-app/components/text';
+import { TextOneLine } from '@actual-app/components/text-one-line';
 import { theme as themeStyle } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 
@@ -310,7 +311,7 @@ export function ThemeInstaller({
                             ...style,
                             display: 'flex',
                             gap: THEME_ITEM_GAP,
-                            padding: `0 ${THEME_ITEM_PADDING}px`,
+                            padding: `0 ${THEME_ITEM_PADDING}px ${THEME_ITEM_GAP}px`,
                           }}
                         >
                           {rowThemes.map((theme, themeIndex) => {
@@ -334,6 +335,7 @@ export function ThemeInstaller({
                                   width: itemWidth,
                                   height: itemWidth,
                                   padding: 8,
+                                  overflow: 'hidden',
                                   borderRadius: 6,
                                   border: `2px solid ${
                                     hasError
@@ -383,23 +385,26 @@ export function ThemeInstaller({
                                   />
                                 </View>
                                 <ColorPalette colors={theme.colors} />
-                                <Text
+                                <TextOneLine
                                   style={{
                                     fontSize: 12,
                                     fontWeight: 500,
                                     textAlign: 'center',
+                                    width: '100%',
                                   }}
+                                  title={theme.name}
                                 >
                                   {theme.name}
-                                </Text>
+                                </TextOneLine>
 
                                 <SpaceBetween
                                   direction="horizontal"
                                   align="center"
+                                  wrap={false}
                                   gap={4}
                                   style={{ fontSize: 10 }}
                                 >
-                                  <Text
+                                  <TextOneLine
                                     style={{
                                       color: themeStyle.pageTextSubdued,
                                     }}
@@ -408,7 +413,7 @@ export function ThemeInstaller({
                                     <Text style={{ fontWeight: 'bold' }}>
                                       {extractRepoOwner(theme.repo)}
                                     </Text>
-                                  </Text>
+                                  </TextOneLine>
                                   <Link
                                     variant="external"
                                     to={normalizeGitHubRepo(theme.repo)}
