@@ -12,7 +12,7 @@ export default defineConfig({
     emptyOutDir: false,
     sourcemap: true,
     lib: {
-      entry: path.resolve(__dirname, 'index.web.ts'),
+      entry: path.resolve(__dirname, 'index.browser.ts'),
       formats: ['es'],
       fileName: () => 'browser.js',
     },
