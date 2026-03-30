@@ -38,7 +38,9 @@ import { payeeQueries } from '@desktop-client/payees';
 
 const queryClient = createTestQueryClient();
 
-vi.mock('@actual-app/core/platform/client/connection');
+vi.mock('@actual-app/core/platform/client/connection', async () => {
+  return import('@desktop-client/mocks/connection');
+});
 vi.mock('../../hooks/useSyncedPref', () => ({
   useSyncedPref: vi.fn().mockReturnValue([undefined, vi.fn()]),
 }));
