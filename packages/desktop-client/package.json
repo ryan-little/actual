@@ -5,6 +5,12 @@
   "files": [
     "build"
   ],
+  "imports": {
+    "#browser-preload": {
+      "electron": "./src/browser-preload.electron.ts",
+      "default": "./src/browser-preload.js"
+    }
+  },
   "scripts": {
     "start": "cross-env PORT=3001 vite",
     "start:browser": "cross-env ./bin/watch-browser",
