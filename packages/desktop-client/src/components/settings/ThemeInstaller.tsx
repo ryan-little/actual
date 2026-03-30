@@ -34,6 +34,7 @@ import type {
 const ITEMS_PER_ROW = 3;
 const THEME_ITEM_GAP = 12;
 const THEME_ITEM_PADDING = 4; // horizontal padding on each side
+const SCROLLBAR_WIDTH = 8;
 const CATALOG_MAX_HEIGHT = 300;
 
 type ThemeInstallerProps = {
@@ -82,7 +83,8 @@ export function ThemeInstaller({
 
   // Calculate theme item width based on container width (always 3 per row)
   const getItemWidth = useCallback((containerWidth: number) => {
-    const availableWidth = containerWidth - THEME_ITEM_PADDING * 2;
+    const availableWidth =
+      containerWidth - THEME_ITEM_PADDING * 2 - SCROLLBAR_WIDTH;
     return Math.floor(
       (availableWidth - (ITEMS_PER_ROW - 1) * THEME_ITEM_GAP) / ITEMS_PER_ROW,
     );
@@ -316,7 +318,7 @@ export function ThemeInstaller({
                             ...style,
                             display: 'flex',
                             gap: THEME_ITEM_GAP,
-                            padding: `0 ${THEME_ITEM_PADDING}px ${THEME_ITEM_GAP}px`,
+                            padding: `0 ${THEME_ITEM_PADDING + SCROLLBAR_WIDTH}px ${THEME_ITEM_GAP}px ${THEME_ITEM_PADDING}px`,
                           }}
                         >
                           {rowThemes.map((theme, themeIndex) => {
