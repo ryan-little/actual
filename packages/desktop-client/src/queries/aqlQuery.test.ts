@@ -1,4 +1,4 @@
-import * as connection from 'loot-core/platform/client/connection';
+import * as connection from '@actual-app/core/platform/client/connection';
 import { q } from 'loot-core/shared/query';
 
 import { aqlQuery } from './aqlQuery';

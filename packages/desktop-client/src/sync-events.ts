@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { t } from 'i18next';
 
-import { listen, send } from 'loot-core/platform/client/connection';
+import { listen, send } from '@actual-app/core/platform/client/connection';
 
 import { accountQueries } from './accounts';
 import { resetSync, sync } from './app/appSlice';

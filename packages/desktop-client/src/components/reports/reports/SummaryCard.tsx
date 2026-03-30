@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { View } from '@actual-app/components/view';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
 import type { SummaryContent, SummaryWidget } from 'loot-core/types/models';
 

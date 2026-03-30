@@ -18,7 +18,7 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import type { ParseFileOptions } from 'loot-core/server/transactions/import/parse-file';
 import { amountToInteger } from 'loot-core/shared/util';
 

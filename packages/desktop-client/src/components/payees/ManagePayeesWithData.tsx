@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 
-import { listen, send } from 'loot-core/platform/client/connection';
+import { listen, send } from '@actual-app/core/platform/client/connection';
 import * as undo from 'loot-core/platform/client/undo';
 import type { UndoState } from 'loot-core/server/undo';
 import { applyChanges } from 'loot-core/shared/util';

@@ -1,4 +1,4 @@
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import type { GoCardlessToken } from 'loot-core/types/models';
 
 import { pushModal } from './modals/modalsSlice';

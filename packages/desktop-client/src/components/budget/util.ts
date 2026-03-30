@@ -4,7 +4,7 @@ import type { CSSProperties } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { t } from 'i18next';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
 import { currencyToAmount, integerToCurrency } from 'loot-core/shared/util';
 import type { Handlers } from 'loot-core/types/handlers';

@@ -4,8 +4,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import { v4 as uuidv4 } from 'uuid';
 
-import { sendCatch } from 'loot-core/platform/client/connection';
-import type { send } from 'loot-core/platform/client/connection';
+import { sendCatch } from '@actual-app/core/platform/client/connection';
+import type { send } from '@actual-app/core/platform/client/connection';
 import type {
   CustomReportEntity,
   DashboardPageEntity,

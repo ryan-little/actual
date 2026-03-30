@@ -1,4 +1,4 @@
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import * as monthUtils from 'loot-core/shared/months';
 import type { Handlers } from 'loot-core/types/handlers';
 import type {

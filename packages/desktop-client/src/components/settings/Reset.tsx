@@ -4,7 +4,7 @@ import { Trans } from 'react-i18next';
 import { ButtonWithLoading } from '@actual-app/components/button';
 import { Text } from '@actual-app/components/text';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 
 import { Setting } from './UI';
 

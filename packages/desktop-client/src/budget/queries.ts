@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import i18n from 'i18next';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import type {
   CategoryEntity,
   CategoryGroupEntity,

@@ -14,7 +14,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   init as initConnection,
   send,
-} from 'loot-core/platform/client/connection';
+} from '@actual-app/core/platform/client/connection';
 
 import { AppBackground } from './AppBackground';
 import { BudgetMonthCountProvider } from './budget/BudgetMonthCountContext';

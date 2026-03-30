@@ -5,12 +5,12 @@ import userEvent from '@testing-library/user-event';
 import { format as formatDate, parse as parseDate } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
+import { initServer } from '@actual-app/core/platform/client/connection';
 import {
   generateAccount,
   generateCategoryGroups,
   generateTransaction,
 } from 'loot-core/mocks';
-import { initServer } from 'loot-core/platform/client/connection';
 import {
   addSplitTransaction,
   realizeTempTransactions,
@@ -38,7 +38,7 @@ import { payeeQueries } from '@desktop-client/payees';
 
 const queryClient = createTestQueryClient();
 
-vi.mock('loot-core/platform/client/connection');
+vi.mock('@actual-app/core/platform/client/connection');
 vi.mock('../../hooks/useSyncedPref', () => ({
   useSyncedPref: vi.fn().mockReturnValue([undefined, vi.fn()]),
 }));

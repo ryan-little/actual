@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import { q } from 'loot-core/shared/query';
 import type {
   CustomReportEntity,

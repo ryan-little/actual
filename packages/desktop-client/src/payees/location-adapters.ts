@@ -1,4 +1,4 @@
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import type { LocationCoordinates } from 'loot-core/shared/location-utils';
 import type {
   NearbyPayeeEntity,

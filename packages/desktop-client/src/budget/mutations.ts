@@ -5,7 +5,7 @@ import type { QueryClient, QueryKey } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { v4 as uuidv4 } from 'uuid';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import type { IntegerAmount } from 'loot-core/shared/util';
 import type {
   CategoryEntity,

@@ -1,5 +1,5 @@
 // @ts-strict-ignore
-import * as connection from 'loot-core/platform/client/connection';
+import * as connection from '@actual-app/core/platform/client/connection';
 import { subDays } from 'loot-core/shared/months';
 import { q } from 'loot-core/shared/query';
 import { resetTracer, tracer } from 'loot-core/shared/test-helpers';

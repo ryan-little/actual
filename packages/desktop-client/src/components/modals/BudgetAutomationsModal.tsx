@@ -9,7 +9,7 @@ import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import uniqueId from 'lodash/uniqueId';
 
-import { send } from 'loot-core/platform/client/connection';
+import { send } from '@actual-app/core/platform/client/connection';
 import { dayFromDate, firstDayOfMonth } from 'loot-core/shared/months';
 import { q } from 'loot-core/shared/query';
 import type {
