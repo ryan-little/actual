@@ -154,23 +154,60 @@ describe('getLoginMethod()', () => {
     expect(getLoginMethod(req)).toBe('openid');
   });
 
-  it('ignores a client-requested method that is inactive in DB', () => {
+  it('honors a client-requested method that exists but is inactive in DB', () => {
     insertAuthRow('openid', 1);
     insertAuthRow('password', 0);
     const req = { body: { loginMethod: 'password' } };
-    expect(getLoginMethod(req)).toBe('openid');
+    expect(getLoginMethod(req)).toBe('password');
   });
 
-  it('ignores a client-requested method that is not in DB', () => {
+  it('honors a client-requested method even if not in DB', () => {
     insertAuthRow('openid', 1);
     const req = { body: { loginMethod: 'password' } };
-    expect(getLoginMethod(req)).toBe('openid');
+    expect(getLoginMethod(req)).toBe('password');
   });
 
   it('falls back to config default when auth table is empty and no req', () => {
     // auth table is empty — getActiveLoginMethod() returns undefined
     // config default for loginMethod is 'password'
     expect(getLoginMethod(undefined)).toBe('password');
+  });
+});
+
+describe('/login', () => {
+  afterEach(() => {
+    clearAuth();
+  });
+
+  it('should allow password login when OIDC is the active method', async () => {
+    bootstrapPassword('testpassword');
+    insertAuthRow('openid', 1);
+    getAccountDb().mutate(
+      "UPDATE auth SET active = 0 WHERE method = 'password'",
+    );
+
+    const res = await request(app)
+      .post('/login')
+      .send({ loginMethod: 'password', password: 'testpassword' });
+
+    expect(res.statusCode).toEqual(200);
+    expect(res.body).toHaveProperty('status', 'ok');
+    expect(res.body.data).toHaveProperty('token');
+  });
+
+  it('should reject wrong password even when method is explicitly requested', async () => {
+    bootstrapPassword('testpassword');
+    insertAuthRow('openid', 1);
+    getAccountDb().mutate(
+      "UPDATE auth SET active = 0 WHERE method = 'password'",
+    );
+
+    const res = await request(app)
+      .post('/login')
+      .send({ loginMethod: 'password', password: 'wrongpassword' });
+
+    expect(res.statusCode).toEqual(400);
+    expect(res.body).toHaveProperty('reason', 'invalid-password');
   });
 });
 
