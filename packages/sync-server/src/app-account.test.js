@@ -161,10 +161,10 @@ describe('getLoginMethod()', () => {
     expect(getLoginMethod(req)).toBe('password');
   });
 
-  it('honors a client-requested method even if not in DB', () => {
+  it('ignores a client-requested method that is not in DB', () => {
     insertAuthRow('openid', 1);
     const req = { body: { loginMethod: 'password' } };
-    expect(getLoginMethod(req)).toBe('password');
+    expect(getLoginMethod(req)).toBe('openid');
   });
 
   it('falls back to config default when auth table is empty and no req', () => {
