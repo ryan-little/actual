@@ -59,8 +59,7 @@ bundle.mobile.js.map
 .idea
 
 # Claude Code
-.claude/*
-!.claude/settings.json
+.claude/worktrees/*
 
 # Misc
 .#*
