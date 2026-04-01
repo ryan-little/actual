@@ -60,6 +60,7 @@ bundle.mobile.js.map
 
 # Claude Code
 .claude/worktrees/*
+.claude/settings.local.json
 
 # Misc
 .#*
