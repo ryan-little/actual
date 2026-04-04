@@ -88,3 +88,6 @@ storybook-static
 .actualrc.yaml
 .actualrc.yml
 actual.config.js
+
+# Local-only financial data (never commit)
+.local-only/
