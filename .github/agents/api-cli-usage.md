@@ -1,8 +1,85 @@
 # Actual Budget API/CLI Usage for Agents
 
-Quick reference for querying Ryan's local Actual Budget data via the Node.js API.
+Quick reference for querying Ryan's local Actual Budget data via the CLI tool or Node.js API.
 
-## Connection Setup
+## CLI Tool (Preferred for Quick Queries)
+
+The `@actual-app/cli` package (experimental) is the simplest way to query data from the terminal. It connects to Ryan's local Electron sync server.
+
+### Setup
+
+```bash
+# Build (from repo root, one-time)
+yarn build:cli
+
+# Set connection env vars (or use .actualrc.json)
+export ACTUAL_SERVER_URL=http://localhost:5007
+export ACTUAL_SESSION_TOKEN=<token-from-global-store.json>
+export ACTUAL_SYNC_ID=<groupId-from-getBudgets>
+
+# Run from monorepo
+node packages/cli/dist/cli.js <command>
+```
+
+- **Server port**: 5007 (Electron embedded sync server — same as the API)
+- **Session token**: `~/Library/Application Support/Actual/global-store.json` → `user-token`
+- **Sync ID**: run `node packages/cli/dist/cli.js budgets list` to find it (the `groupId` field)
+- **Data dir**: defaults to `~/.actual-cli/data` (auto-created)
+
+### Common Commands
+
+```bash
+CLI="node packages/cli/dist/cli.js"
+
+# List accounts with balances
+$CLI accounts list --format table
+
+# Get a specific account balance
+$CLI accounts balance <id> [--cutoff 2026-03-01]
+
+# List transactions
+$CLI transactions list --account <id> --start 2026-01-01 --end 2026-04-09
+
+# Last N transactions (shortcut)
+$CLI query run --last 20 --format table
+
+# Query with filters (AQL)
+$CLI query run --table transactions \
+  --select "date,amount,payee.name,category.name" \
+  --filter '{"amount":{"$lt":0}}' \
+  --order-by "date:desc" --limit 10
+
+# Aggregates via stdin
+echo '{"table":"transactions","groupBy":["category.name"],"select":["category.name",{"amount":{"$sum":"$amount"}}]}' \
+  | $CLI query run --file -
+
+# Look up entity ID by name
+$CLI server get-id --type accounts --name "Checking"
+
+# Trigger bank sync
+$CLI server bank-sync
+
+# Export to CSV
+$CLI transactions list --account <id> --start 2026-01-01 --end 2026-12-31 --format csv > txns.csv
+```
+
+### Output Formats
+
+`--format json` (default), `table`, or `csv`. Amount fields are auto-formatted to dollars in `table`/`csv` output; JSON always returns integer cents.
+
+### Available Query Tables
+
+`transactions`, `accounts`, `categories`, `payees`, `rules`, `schedules`
+
+Use `$CLI query tables` to list them, `$CLI query fields <table>` for field names/types.
+
+---
+
+## Node.js API (For Scripts & Complex Logic)
+
+Use the API when you need programmatic control (loops, conditionals, multi-step operations). The CLI is simpler for one-off queries.
+
+### Connection Setup
 
 ```javascript
 const api = require('./packages/api');
@@ -19,7 +96,7 @@ await api.init({
 - **Data dir**: use a temp directory like `/tmp/actual-api-temp` (budget gets downloaded here)
 - The temp dir must exist before calling `init()` — create it with `mkdir -p` first
 
-## Loading a Budget
+### Loading a Budget
 
 ```javascript
 // First time: download from server (uses sync/group ID, not file ID)
@@ -36,7 +113,7 @@ const budgets = await api.getBudgets();
 
 **Key gotcha**: `downloadBudget()` takes the `groupId` (sync ID). `loadBudget()` takes the local directory name (e.g., `My-Finances-2ddd014`), NOT a UUID. After downloading once, subsequent runs only need `loadBudget()`.
 
-## Querying Accounts & Balances
+### Querying Accounts & Balances
 
 ```javascript
 const accounts = await api.getAccounts();
@@ -50,7 +127,7 @@ const balance = await api.getAccountBalance(accountId);
 const bal = await api.getAccountBalance(accountId, new Date('2026-03-01'));
 ```
 
-## Querying Transactions
+### Querying Transactions
 
 ```javascript
 const txns = await api.getTransactions(
@@ -68,7 +145,7 @@ const txns = await api.getTransactions(
 - `imported_payee` = original payee name from bank import
 - `payee` = Actual's mapped payee ID (UUID)
 
-## Advanced Queries (AQL)
+### Advanced Queries (AQL)
 
 ```javascript
 const { q, aqlQuery } = require('./packages/api');
@@ -85,7 +162,7 @@ const result = await aqlQuery(
 
 Available tables: `transactions`, `accounts`, `categories`, `category_groups`, `payees`, `schedules`, `rules`
 
-## Cleanup
+### Cleanup
 
 ```javascript
 await api.shutdown(); // Always call when done — syncs and closes budget
@@ -127,7 +204,7 @@ await api.shutdown(); // Always call when done — syncs and closes budget
 
 **Vault mapping**: "Savings Vault" → "ColdSavings20k05202025 Vault" → "ColdSavings Vault" → "Cold Savings Vault" = SoFi HYSA. Other vaults (Investing, Fun Buys, Season Tickets, etc.) are not tracked in Actual.
 
-## Full Example: List All Account Balances
+### Full Example: List All Account Balances
 
 ```javascript
 const api = require('./packages/api');
